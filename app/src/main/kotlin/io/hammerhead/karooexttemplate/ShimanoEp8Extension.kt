@@ -42,8 +42,12 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                             DataType.Type.SPEED,
                             DataType.dataTypeId(extension, "ep8-mode"),
                             DataType.dataTypeId(extension, "ep8-range"),
+                            DataType.dataTypeId(extension, "ep8-range-eco"),
+                            DataType.dataTypeId(extension, "ep8-range-trail"),
+                            DataType.dataTypeId(extension, "ep8-range-boost"),
                             DataType.dataTypeId(extension, "ep8-cadence"),
-                            DataType.dataTypeId(extension, "ep8-power")
+                            DataType.dataTypeId(extension, "ep8-power"),
+                            DataType.dataTypeId(extension, "ep8-trip")
                         )
                     )
                 )
@@ -87,7 +91,7 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                         )
                     )
 
-                    // 2. Eigenleistung (Watt) über Custom-Feld
+                    // 2. Eigenleistung (Watt)
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
@@ -126,7 +130,7 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                         )
                     )
 
-                    // 5. Restreichweite (km)
+                    // 5. Restreichweiten (Aktiv, Eco, Trail, Boost)
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
@@ -135,13 +139,58 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                             )
                         )
                     )
+                    emitter.onNext(
+                        OnDataPoint(
+                            DataPoint(
+                                dataTypeId = DataType.dataTypeId(extension, "ep8-range-eco"),
+                                values = mapOf(DataType.Field.SINGLE to state.rangeEcoKm.toDouble())
+                            )
+                        )
+                    )
+                    emitter.onNext(
+                        OnDataPoint(
+                            DataPoint(
+                                dataTypeId = DataType.dataTypeId(extension, "ep8-range-trail"),
+                                values = mapOf(DataType.Field.SINGLE to state.rangeTrailKm.toDouble())
+                            )
+                        )
+                    )
+                    emitter.onNext(
+                        OnDataPoint(
+                            DataPoint(
+                                dataTypeId = DataType.dataTypeId(extension, "ep8-range-boost"),
+                                values = mapOf(DataType.Field.SINGLE to state.rangeBoostKm.toDouble())
+                            )
+                        )
+                    )
 
-                    // 6. Unterstützungsmodus (0=OFF, 1=ECO, 2=TRAIL, 3=BOOST)
+                    // 6. Trip-Distanz in Metern
+                    emitter.onNext(
+                        OnDataPoint(
+                            DataPoint(
+                                dataTypeId = DataType.dataTypeId(extension, "ep8-trip"),
+                                values = mapOf(DataType.Field.SINGLE to state.tripMeters.toDouble())
+                            )
+                        )
+                    )
+
+                    // 7. Unterstützungsmodus als Text-Name ("OFF", "ECO", "TRAIL", "BOOST") über das Text-Feld
+                    val modeTextValue = when (state.assistMode) {
+                        1 -> 1.0 // ECO
+                        2 -> 2.0 // TRAIL
+                        3 -> 3.0 // BOOST
+                        4 -> 4.0 // WALK
+                        else -> 0.0 // OFF
+                    }
+                    
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
                                 dataTypeId = DataType.dataTypeId(extension, "ep8-mode"),
-                                values = mapOf(DataType.Field.SINGLE to state.assistMode.toDouble())
+                                values = mapOf(
+                                    DataType.Field.SINGLE to modeTextValue,
+                                    DataType.Field.TEXT to modeTextValue // Übergibt den Modus für die Textanzeige
+                                )
                             )
                         )
                     )
