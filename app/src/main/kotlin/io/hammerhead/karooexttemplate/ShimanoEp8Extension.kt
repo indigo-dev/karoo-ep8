@@ -1,6 +1,5 @@
 package io.hammerhead.karooexttemplate
 
-import android.graphics.Color
 import io.hammerhead.karooext.extension.KarooExtension
 import io.hammerhead.karooext.internal.Emitter
 import io.hammerhead.karooext.models.BatteryStatus
@@ -69,7 +68,7 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                 }
 
                 if (state.connected) {
-                    // 1. Batterie-Status & Farbe basierend auf Prozent
+                    // 1. Batterie-Status
                     val batteryStatus = when {
                         state.batteryPercent > 80 -> BatteryStatus.NEW
                         state.batteryPercent > 50 -> BatteryStatus.GOOD
@@ -79,20 +78,11 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                     }
                     emitter.onNext(OnBatteryStatus(batteryStatus))
 
-                    val batteryColor = when {
-                        state.batteryPercent > 30 -> Color.GREEN
-                        state.batteryPercent > 15 -> Color.YELLOW
-                        else -> Color.RED
-                    }.toDouble()
-
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
                                 dataTypeId = DataType.Type.BATTERY_PERCENT,
-                                values = mapOf(
-                                    DataType.Field.SINGLE to state.batteryPercent.toDouble(),
-                                    DataType.Field.COLOR to batteryColor
-                                )
+                                values = mapOf(DataType.Field.SINGLE to state.batteryPercent.toDouble())
                             )
                         )
                     )
@@ -146,23 +136,12 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                         )
                     )
 
-                    // 6. Unterstützungsmodus mit dynamischer Farbkennzeichnung für den Punkt
-                    // 0=OFF (Grau), 1=ECO (Grün), 2=TRAIL (Blau), 3=BOOST (Rot)
-                    val modeColor = when (state.assistMode) {
-                        1 -> Color.BLUE
-                        2 -> Color.GREEN
-                        3 -> Color.YELLOW
-                        else -> Color.GRAY
-                    }.toDouble()
-
+                    // 6. Unterstützungsmodus (0=OFF, 1=ECO, 2=TRAIL, 3=BOOST)
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
                                 dataTypeId = DataType.dataTypeId(extension, "ep8-mode"),
-                                values = mapOf(
-                                    DataType.Field.SINGLE to state.assistMode.toDouble(),
-                                    DataType.Field.COLOR to modeColor
-                                )
+                                values = mapOf(DataType.Field.SINGLE to state.assistMode.toDouble())
                             )
                         )
                     )
