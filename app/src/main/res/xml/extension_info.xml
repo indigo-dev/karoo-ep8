@@ -8,13 +8,31 @@
     <DataType
         typeId="ep8-mode"
         displayName="EP8 Modus"
-        description="Aktuelle Unterstützungsstufe"
+        description="Aktuelle Unterstützungsstufe als Text &amp; Zahl"
         graphical="false" />
 
     <DataType
         typeId="ep8-range"
-        displayName="EP8 Restreichweite"
-        description="Restreichweite in km"
+        displayName="EP8 Restreichweite aktiv"
+        description="Restreichweite im gewählten Modus in km"
+        graphical="false" />
+
+    <DataType
+        typeId="ep8-range-eco"
+        displayName="EP8 Reichweite ECO"
+        description="Restreichweite im ECO-Modus in km"
+        graphical="false" />
+
+    <DataType
+        typeId="ep8-range-trail"
+        displayName="EP8 Reichweite TRAIL"
+        description="Restreichweite im TRAIL-Modus in km"
+        graphical="false" />
+
+    <DataType
+        typeId="ep8-range-boost"
+        displayName="EP8 Reichweite BOOST"
+        description="Restreichweite im BOOST-Modus in km"
         graphical="false" />
 
     <DataType
@@ -27,6 +45,12 @@
         typeId="ep8-power"
         displayName="EP8 Eigenleistung"
         description="Fahrer-Trittleistung in Watt"
+        graphical="false" />
+
+    <DataType
+        typeId="ep8-trip"
+        displayName="EP8 Trip-Distanz"
+        description="Gefahrene Strecke in Metern"
         graphical="false" />
 
 </ExtensionInfo>
