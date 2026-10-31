@@ -174,23 +174,12 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                         )
                     )
 
-                    // 7. Unterstützungsmodus als Text-Name ("OFF", "ECO", "TRAIL", "BOOST") über das Text-Feld
-                    val modeTextValue = when (state.assistMode) {
-                        1 -> 1.0 // ECO
-                        2 -> 2.0 // TRAIL
-                        3 -> 3.0 // BOOST
-                        4 -> 4.0 // WALK
-                        else -> 0.0 // OFF
-                    }
-                    
+                    // 7. Unterstützungsmodus als sauberer numerischer Wert (0=OFF, 1=ECO, 2=TRAIL, 3=BOOST, 4=WALK)
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
                                 dataTypeId = DataType.dataTypeId(extension, "ep8-mode"),
-                                values = mapOf(
-                                    DataType.Field.SINGLE to modeTextValue,
-                                    DataType.Field.TEXT to modeTextValue // Übergibt den Modus für die Textanzeige
-                                )
+                                values = mapOf(DataType.Field.SINGLE to state.assistMode.toDouble())
                             )
                         )
                     )
