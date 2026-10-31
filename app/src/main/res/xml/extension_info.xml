@@ -8,19 +8,19 @@
     <DataType
         typeId="ep8-mode"
         displayName="EP8 Modus"
-        description="Aktuelle Unterstützungsstufe (OFF, ECO, TRAIL, BOOST)"
+        description="Aktuelle Unterstützungsstufe"
         graphical="false" />
 
     <DataType
         typeId="ep8-range"
         displayName="EP8 Restreichweite"
-        description="Restreichweite in km im aktuellen Modus"
+        description="Restreichweite in km"
         graphical="false" />
 
     <DataType
         typeId="ep8-cadence"
         displayName="EP8 Trittfrequenz"
-        description="Kadenz in RPM direkt vom Motor"
+        description="Kadenz in RPM"
         graphical="false" />
 
     <DataType
