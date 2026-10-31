@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.bluetooth.*
 import android.bluetooth.le.*
 import android.content.Context
-import android.os.ParcelUuid
 import android.util.Log
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -29,8 +28,10 @@ data class Ep8Telemetry(
     val rangeBoostKm: Int = 0,
     val rangeTrailKm: Int = 0,
     val rangeEcoKm: Int = 0,
-    val tripMeters: Long = 0
+    val tripMeters: Long = 0,
+    val odometerRaw: Long = 0
 ) {
+    // Gibt immer genau die EINE Restreichweite passend zum aktuellen Modus zurück
     val activeRangeKm: Int
         get() = when (assistMode) {
             1 -> rangeEcoKm
@@ -61,9 +62,6 @@ class ShimanoEp8Manager(private val context: Context) {
     private var bluetoothGatt: BluetoothGatt? = null
     private var activeMacAddress: String? = null
 
-    /**
-     * Sucht nach allen Shimano E-Bikes / EW-EN100 Einheiten in Reichweite
-     */
     fun scanForShimanoBikes(): Flow<DiscoveredShimanoBike> = callbackFlow {
         val adapter = BluetoothAdapter.getDefaultAdapter()
         val scanner = adapter?.bluetoothLeScanner
@@ -83,15 +81,20 @@ class ShimanoEp8Manager(private val context: Context) {
 
                 val isShimano = uuids.contains(SERVICE_SHIMANO_DFLY) ||
                         uuids.contains(SERVICE_SHIMANO_AUTH) ||
-                        name.startsWith("EWEN100", ignoreCase = true) ||
+                        name.startsWith("EW", ignoreCase = true) ||
                         name.startsWith("SC-E", ignoreCase = true) ||
-                        name.contains("SHIMANO", ignoreCase = true)
+                        name.contains("SHIMANO", ignoreCase = true) ||
+                        name.contains("EP8", ignoreCase = true)
 
                 if (isShimano && seenMacs.add(mac)) {
                     val display = if (name.isNotBlank()) name else "Shimano STEPS ($mac)"
                     Log.i(TAG, "Discovered Shimano Bike: $display [$mac]")
                     trySend(DiscoveredShimanoBike(macAddress = mac, displayName = display))
                 }
+            }
+
+            override fun onScanFailed(errorCode: Int) {
+                Log.e(TAG, "BLE Scan failed with error: $errorCode")
             }
         }
 
@@ -101,13 +104,14 @@ class ShimanoEp8Manager(private val context: Context) {
 
         scanner.startScan(null, settings, scanCallback)
         awaitClose {
-            scanner.stopScan(scanCallback)
+            try {
+                scanner.stopScan(scanCallback)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error stopping scan", e)
+            }
         }
     }
 
-    /**
-     * Verbindet sich mit der im Karoo-Sensormenü gekoppelten MAC-Adresse
-     */
     fun connect(macAddress: String) {
         if (activeMacAddress == macAddress && _telemetry.value.connected) return
         disconnect()
@@ -115,13 +119,17 @@ class ShimanoEp8Manager(private val context: Context) {
 
         val adapter = BluetoothAdapter.getDefaultAdapter() ?: return
         val device = adapter.getRemoteDevice(macAddress)
-        Log.i(TAG, "Connecting to Shimano E-Bike ($macAddress)...")
-        bluetoothGatt = device.connectGatt(context, true, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        Log.i(TAG, "Connecting directly to Shimano E-Bike ($macAddress)...")
+        bluetoothGatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
     }
 
     fun disconnect() {
-        bluetoothGatt?.disconnect()
-        bluetoothGatt?.close()
+        try {
+            bluetoothGatt?.disconnect()
+            bluetoothGatt?.close()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during disconnect", e)
+        }
         bluetoothGatt = null
         activeMacAddress = null
         _telemetry.value = Ep8Telemetry(connected = false)
@@ -135,12 +143,7 @@ class ShimanoEp8Manager(private val context: Context) {
                 gatt.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.w(TAG, "Disconnected from ${gatt.device.address}")
-                _telemetry.value = _telemetry.value.copy(
-                    connected = false,
-                    speedKmh = 0.0,
-                    riderPowerWatts = 0,
-                    cadenceRpm = 0
-                )
+                _telemetry.value = Ep8Telemetry(connected = false)
             }
         }
 
@@ -195,7 +198,7 @@ class ShimanoEp8Manager(private val context: Context) {
         val current = _telemetry.value
 
         when (bytes[0].toInt() and 0xFF) {
-            // Paket 0x02 (10 Bytes): Assist-Modus, Speed, Rider Power (Watt), Cadence (RPM)
+            // Paket 0x02: Assist-Modus (Byte 1), Speed (Bytes 2..3), Fahrer-Watt (Byte 4), Cadence (Byte 5)
             0x02 -> {
                 if (bytes.size >= 10) {
                     val mode = bytes[1].toInt() and 0xFF
@@ -222,16 +225,18 @@ class ShimanoEp8Manager(private val context: Context) {
                 }
             }
 
-            // Paket 0x03 (19 Bytes): Trip-Distanz & Restreichweiten (Boost, Trail, Eco)
+            // Paket 0x03: Trip-Meter (Bytes 1..4), Odometer (Bytes 9..12), Range Boost/Trail/Eco (Bytes 13..18)
             0x03 -> {
                 if (bytes.size >= 19) {
                     val tripM = uInt32LE(bytes, 1)
+                    val odoRaw = uInt32LE(bytes, 9)
                     val boostKm = uInt16LE(bytes, 13)
                     val trailKm = uInt16LE(bytes, 15)
                     val ecoKm = uInt16LE(bytes, 17)
 
                     _telemetry.value = current.copy(
                         tripMeters = tripM,
+                        odometerRaw = odoRaw,
                         rangeBoostKm = if (boostKm != 0xFFFF) boostKm else current.rangeBoostKm,
                         rangeTrailKm = if (trailKm != 0xFFFF) trailKm else current.rangeTrailKm,
                         rangeEcoKm = if (ecoKm != 0xFFFF) ecoKm else current.rangeEcoKm
