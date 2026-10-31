@@ -1,4 +1,4 @@
-package io.hammerhead.sampleext
+package io.hammerhead.karooexttemplate
 
 import android.annotation.SuppressLint
 import android.bluetooth.*
