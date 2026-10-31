@@ -28,9 +28,6 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
         ep8Manager = ShimanoEp8Manager(applicationContext)
     }
 
-    /**
-     * Wird aufgerufen, wenn du auf dem Karoo 3 unter "Sensoren -> +" nach neuen Sensoren suchst
-     */
     override fun startScan(emitter: Emitter<Device>) {
         val job = scope.launch {
             ep8Manager.scanForShimanoBikes().collect { bike ->
@@ -45,7 +42,9 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                             DataType.Type.CADENCE,
                             DataType.Type.SPEED,
                             DataType.dataTypeId(extension, "ep8-mode"),
-                            DataType.dataTypeId(extension, "ep8-range")
+                            DataType.dataTypeId(extension, "ep8-range"),
+                            DataType.dataTypeId(extension, "ep8-cadence"),
+                            DataType.dataTypeId(extension, "ep8-power")
                         )
                     )
                 )
@@ -54,9 +53,6 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
         emitter.setCancellable { job.cancel() }
     }
 
-    /**
-     * Wird vom Karoo 3 automatisch aufgerufen, sobald das gekoppelte Bike aktiv ist
-     */
     override fun connectDevice(uid: String, emitter: Emitter<DeviceEvent>) {
         val macAddress = uid.removePrefix("ep8-")
         ep8Manager.connect(macAddress)
@@ -73,7 +69,7 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                 }
 
                 if (state.connected) {
-                    // 1. E-Bike Akkustand + Karoo-Batteriestatus-System
+                    // 1. Batterie-Status
                     val batteryStatus = when {
                         state.batteryPercent > 80 -> BatteryStatus.NEW
                         state.batteryPercent > 50 -> BatteryStatus.GOOD
@@ -92,12 +88,20 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                         )
                     )
 
-                    // 2. Fahrer-Eigenleistung (Watt)
+                    // 2. Eigenleistung (Watt)
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
                                 dataTypeId = DataType.Type.POWER,
                                 values = mapOf(DataType.Field.POWER to state.riderPowerWatts.toDouble())
+                            )
+                        )
+                    )
+                    emitter.onNext(
+                        OnDataPoint(
+                            DataPoint(
+                                dataTypeId = DataType.dataTypeId(extension, "ep8-power"),
+                                values = mapOf(DataType.Field.SINGLE to state.riderPowerWatts.toDouble())
                             )
                         )
                     )
@@ -112,18 +116,18 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                         )
                     )
 
-                    // 4. Geschwindigkeit (Karoo erwartet m/s)
-                    val speedMetersPerSec = state.speedKmh / 3.6
+                    // 4. Geschwindigkeit (m/s)
+                    val speedMps = state.speedKmh / 3.6
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
                                 dataTypeId = DataType.Type.SPEED,
-                                values = mapOf(DataType.Field.SPEED to speedMetersPerSec)
+                                values = mapOf(DataType.Field.SPEED to speedMps)
                             )
                         )
                     )
 
-                    // 5. Aktuelle Restreichweite im gewählten Modus (in km)
+                    // 5. Restreichweite (km)
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
@@ -133,12 +137,17 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                         )
                     )
 
-                    // 6. Aktueller Unterstützungsmodus (0=OFF, 1=ECO, 2=TRAIL, 3=BOOST)
+                    // 6. Unterstützungsmodus als Text-Beschreibung (0=OFF, 1=ECO, 2=TRAIL, 3=BOOST, 4=WALK)
+                    // Wir übertragen den Namen direkt als String in das Textfeld, falls unterstützt, 
+                    // oder geben den Modus-Code aus.
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
                                 dataTypeId = DataType.dataTypeId(extension, "ep8-mode"),
-                                values = mapOf(DataType.Field.SINGLE to state.assistMode.toDouble())
+                                values = mapOf(
+                                    DataType.Field.SINGLE to state.assistMode.toDouble(),
+                                    DataType.Field.TEXT to state.assistModeName.toDouble() // Fallback für Textanzeige
+                                )
                             )
                         )
                     )
