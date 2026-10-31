@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ExtensionInfo
+    id="shimano-ep8"
     displayName="@string/extension_name"
-    icon="@drawable/ic_launcher_foreground"
-    id="template-id"
-    scansDevices="false">
-    <!-- DataType ... -->
+    version="1.0"
+    scansDevices="true">
+
+    <DataType
+        typeId="ep8-mode"
+        displayName="@string/datatype_mode_name"
+        description="@string/datatype_mode_desc"
+        graphical="false" />
+
+    <DataType
+        typeId="ep8-range"
+        displayName="@string/datatype_range_name"
+        description="@string/datatype_range_desc"
+        graphical="false" />
+
 </ExtensionInfo>
