@@ -75,7 +75,7 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                 if (state.connected) {
                     // 1. E-Bike Akkustand + Karoo-Batteriestatus-System
                     val batteryStatus = when {
-                        state.batteryPercent > 80 -> BatteryStatus.FULL
+                        state.batteryPercent > 80 -> BatteryStatus.NEW
                         state.batteryPercent > 50 -> BatteryStatus.GOOD
                         state.batteryPercent > 20 -> BatteryStatus.OK
                         state.batteryPercent > 10 -> BatteryStatus.LOW
