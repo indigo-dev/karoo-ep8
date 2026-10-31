@@ -18,7 +18,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
+class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var ep8Manager: ShimanoEp8Manager
