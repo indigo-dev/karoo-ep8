@@ -149,9 +149,9 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                     // 6. Unterstützungsmodus mit dynamischer Farbkennzeichnung für den Punkt
                     // 0=OFF (Grau), 1=ECO (Grün), 2=TRAIL (Blau), 3=BOOST (Rot)
                     val modeColor = when (state.assistMode) {
-                        1 -> Color.GREEN
-                        2 -> Color.BLUE
-                        3 -> Color.RED
+                        1 -> Color.BLUE
+                        2 -> Color.GREEN
+                        3 -> Color.YELLOW
                         else -> Color.GRAY
                     }.toDouble()
 
