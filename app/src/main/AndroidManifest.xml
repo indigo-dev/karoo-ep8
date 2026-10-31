@@ -30,12 +30,13 @@
             android:exported="true"
             tools:ignore="ExportedService">
             <intent-filter>
-                <action android:name="io.hammerhead.karooext.KAROO_EXTENSION" />
+                <action android:name="io.hammerhead.karooext.action.EXTENSION" />
             </intent-filter>
             <meta-data
                 android:name="io.hammerhead.karooext.EXTENSION_INFO"
                 android:resource="@xml/extension_info" />
         </service>
+
     </application>
 
 </manifest>
