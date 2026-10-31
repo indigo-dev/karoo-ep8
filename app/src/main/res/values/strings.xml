@@ -1,5 +1,8 @@
 <resources>
-    <string name="app_name">template</string>
-    <string name="hello_karoo">Hello Karoo!</string>
-    <string name="extension_name">template</string>
+    <string name="app_name">Shimano EP8</string>
+    <string name="extension_name">Shimano EP8 E-Bike</string>
+    <string name="datatype_mode_name">EP8 Modus</string>
+    <string name="datatype_mode_desc">Aktuelle Unterstützungsstufe (0=OFF, 1=ECO, 2=TRAIL, 3=BOOST)</string>
+    <string name="datatype_range_name">EP8 Restreichweite</string>
+    <string name="datatype_range_desc">Restreichweite in km im aktuellen Modus</string>
 </resources>
