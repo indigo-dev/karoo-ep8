@@ -2,43 +2,25 @@
 <ExtensionInfo
     id="shimano-ep8"
     displayName="@string/extension_name"
-    version="1.0"
+    icon="@mipmap/ic_launcher"
     scansDevices="true">
 
     <DataType
         typeId="ep8-mode"
         displayName="EP8 Modus"
-        description="Aktuelle Unterstützungsstufe als Text &amp; Zahl"
-        graphical="false" />
+        description="Unterstützungsstufe (OFF, ECO, TRAIL, BOOST, WALK)"
+        graphical="true" />
 
     <DataType
         typeId="ep8-range"
-        displayName="EP8 Restreichweite aktiv"
-        description="Restreichweite im gewählten Modus in km"
+        displayName="EP8 Restreichweite"
+        description="Restreichweite im aktiven Modus in km"
         graphical="false" />
 
     <DataType
-        typeId="ep8-range-eco"
-        displayName="EP8 Reichweite ECO"
-        description="Restreichweite im ECO-Modus in km"
-        graphical="false" />
-
-    <DataType
-        typeId="ep8-range-trail"
-        displayName="EP8 Reichweite TRAIL"
-        description="Restreichweite im TRAIL-Modus in km"
-        graphical="false" />
-
-    <DataType
-        typeId="ep8-range-boost"
-        displayName="EP8 Reichweite BOOST"
-        description="Restreichweite im BOOST-Modus in km"
-        graphical="false" />
-
-    <DataType
-        typeId="ep8-cadence"
-        displayName="EP8 Trittfrequenz"
-        description="Kadenz in RPM"
+        typeId="ep8-battery"
+        displayName="EP8 Akku"
+        description="Akkuladestand in Prozent"
         graphical="false" />
 
     <DataType
@@ -48,9 +30,27 @@
         graphical="false" />
 
     <DataType
+        typeId="ep8-cadence"
+        displayName="EP8 Trittfrequenz"
+        description="Trittfrequenz in RPM"
+        graphical="false" />
+
+    <DataType
+        typeId="ep8-speed"
+        displayName="EP8 Geschwindigkeit"
+        description="E-Bike Geschwindigkeit in km/h"
+        graphical="false" />
+
+    <DataType
         typeId="ep8-trip"
         displayName="EP8 Trip-Distanz"
-        description="Gefahrene Strecke in Metern"
+        description="Tagesstrecke in km"
+        graphical="false" />
+
+    <DataType
+        typeId="ep8-odometer"
+        displayName="EP8 Gesamtkilometer"
+        description="Gesamtlaufleistung (Odometer)"
         graphical="false" />
 
 </ExtensionInfo>
