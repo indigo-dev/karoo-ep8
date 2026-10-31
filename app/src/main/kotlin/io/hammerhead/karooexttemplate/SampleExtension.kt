@@ -38,7 +38,6 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                         displayName = bike.displayName,
                         dataTypes = listOf(
                             DataType.Type.BATTERY_PERCENT,
-                            DataType.Type.POWER,
                             DataType.Type.CADENCE,
                             DataType.Type.SPEED,
                             DataType.dataTypeId(extension, "ep8-mode"),
@@ -88,15 +87,7 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                         )
                     )
 
-                    // 2. Eigenleistung (Watt)
-                    emitter.onNext(
-                        OnDataPoint(
-                            DataPoint(
-                                dataTypeId = DataType.Type.POWER,
-                                values = mapOf(DataType.Field.POWER to state.riderPowerWatts.toDouble())
-                            )
-                        )
-                    )
+                    // 2. Eigenleistung (Watt) über Custom-Feld (verhindert Nullpunkt-Kalibrierung)
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
@@ -112,6 +103,14 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                             DataPoint(
                                 dataTypeId = DataType.Type.CADENCE,
                                 values = mapOf(DataType.Field.CADENCE to state.cadenceRpm.toDouble())
+                            )
+                        )
+                    )
+                    emitter.onNext(
+                        OnDataPoint(
+                            DataPoint(
+                                dataTypeId = DataType.dataTypeId(extension, "ep8-cadence"),
+                                values = mapOf(DataType.Field.SINGLE to state.cadenceRpm.toDouble())
                             )
                         )
                     )
@@ -137,16 +136,14 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                         )
                     )
 
-                    // 6. Unterstützungsmodus als Text-Beschreibung (0=OFF, 1=ECO, 2=TRAIL, 3=BOOST, 4=WALK)
-                    // Wir übertragen den Namen direkt als String in das Textfeld, falls unterstützt, 
-                    // oder geben den Modus-Code aus.
+                    // 6. Unterstützungsmodus als Text-Beschreibung (OFF, ECO, TRAIL, BOOST)
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
                                 dataTypeId = DataType.dataTypeId(extension, "ep8-mode"),
                                 values = mapOf(
                                     DataType.Field.SINGLE to state.assistMode.toDouble(),
-                                    DataType.Field.TEXT to state.assistModeName.toDouble() // Fallback für Textanzeige
+                                    DataType.Field.TEXT to state.assistModeName.toDouble()
                                 )
                             )
                         )
