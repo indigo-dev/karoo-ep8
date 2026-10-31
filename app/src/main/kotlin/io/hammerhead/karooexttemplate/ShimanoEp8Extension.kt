@@ -87,7 +87,7 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                         )
                     )
 
-                    // 2. Eigenleistung (Watt)
+                    // 2. Eigenleistung (Watt) über Custom-Feld
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
