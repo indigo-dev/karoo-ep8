@@ -1,10 +1,22 @@
-package io.hammerhead.sampleext
+package io.hammerhead.karooexttemplate
 
 import io.hammerhead.karooext.extension.KarooExtension
 import io.hammerhead.karooext.internal.Emitter
-import io.hammerhead.karooext.models.*
-import kotlinx.coroutines.*
+import io.hammerhead.karooext.models.BatteryStatus
+import io.hammerhead.karooext.models.ConnectionStatus
+import io.hammerhead.karooext.models.DataPoint
+import io.hammerhead.karooext.models.DataType
+import io.hammerhead.karooext.models.Device
+import io.hammerhead.karooext.models.DeviceEvent
+import io.hammerhead.karooext.models.OnBatteryStatus
+import io.hammerhead.karooext.models.OnConnectionStatus
+import io.hammerhead.karooext.models.OnDataPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
 
@@ -19,25 +31,21 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
     /**
      * Wird aufgerufen, wenn du auf dem Karoo 3 unter "Sensoren -> +" nach neuen Sensoren suchst
      */
-    override fun startScan(emitter: Emitter<ScanState>) {
+    override fun startScan(emitter: Emitter<Device>) {
         val job = scope.launch {
-            emitter.onNext(ScanState.Scanning)
             ep8Manager.scanForShimanoBikes().collect { bike ->
-                val macSuffix = bike.macAddress.replace(":", "").takeLast(4)
                 emitter.onNext(
-                    ScanState.ScanResult(
-                        Device(
-                            extension = extension,
-                            uid = "ep8-${bike.macAddress}",
-                            displayName = bike.displayName,
-                            supportedDataTypes = listOf(
-                                DataType.Type.BATTERY_PERCENT,
-                                DataType.Type.POWER,
-                                DataType.Type.CADENCE,
-                                DataType.Type.SPEED,
-                                DataType.custom(extension, "ep8-mode"),
-                                DataType.custom(extension, "ep8-range")
-                            )
+                    Device(
+                        extension = extension,
+                        uid = "ep8-${bike.macAddress}",
+                        displayName = bike.displayName,
+                        dataTypes = listOf(
+                            DataType.Type.BATTERY_PERCENT,
+                            DataType.Type.POWER,
+                            DataType.Type.CADENCE,
+                            DataType.Type.SPEED,
+                            DataType.dataTypeId(extension, "ep8-mode"),
+                            DataType.dataTypeId(extension, "ep8-range")
                         )
                     )
                 )
@@ -47,7 +55,7 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
     }
 
     /**
-     * Wird vom Karoo 3 automatisch aufgerufen, sobald ein gekoppeltes Bike in der Sensorliste aktiv ist
+     * Wird vom Karoo 3 automatisch aufgerufen, sobald das gekoppelte Bike aktiv ist
      */
     override fun connectDevice(uid: String, emitter: Emitter<DeviceEvent>) {
         val macAddress = uid.removePrefix("ep8-")
@@ -66,11 +74,15 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
 
                 if (state.connected) {
                     // 1. E-Bike Akkustand + Karoo-Batteriestatus-System
-                    emitter.onNext(
-                        OnBatteryStatus(
-                            BatteryStatus.fromPercentage(state.batteryPercent)
-                        )
-                    )
+                    val batteryStatus = when {
+                        state.batteryPercent > 80 -> BatteryStatus.FULL
+                        state.batteryPercent > 50 -> BatteryStatus.GOOD
+                        state.batteryPercent > 20 -> BatteryStatus.OK
+                        state.batteryPercent > 10 -> BatteryStatus.LOW
+                        else -> BatteryStatus.CRITICAL
+                    }
+                    emitter.onNext(OnBatteryStatus(batteryStatus))
+
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
@@ -100,7 +112,7 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                         )
                     )
 
-                    // 4. Geschwindigkeit (Karoo erwartet m/s als internen Standardwert)
+                    // 4. Geschwindigkeit (Karoo erwartet m/s)
                     val speedMetersPerSec = state.speedKmh / 3.6
                     emitter.onNext(
                         OnDataPoint(
@@ -115,7 +127,7 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
-                                dataTypeId = DataType.custom(extension, "ep8-range"),
+                                dataTypeId = DataType.dataTypeId(extension, "ep8-range"),
                                 values = mapOf(DataType.Field.SINGLE to state.activeRangeKm.toDouble())
                             )
                         )
@@ -125,7 +137,7 @@ class SampleExtension : KarooExtension("shimano-ep8", "1.0") {
                     emitter.onNext(
                         OnDataPoint(
                             DataPoint(
-                                dataTypeId = DataType.custom(extension, "ep8-mode"),
+                                dataTypeId = DataType.dataTypeId(extension, "ep8-mode"),
                                 values = mapOf(DataType.Field.SINGLE to state.assistMode.toDouble())
                             )
                         )
