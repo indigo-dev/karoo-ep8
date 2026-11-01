@@ -2,9 +2,9 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingStart="8dp"
+    android:paddingStart="6dp"
     android:paddingTop="0dp"
-    android:paddingEnd="8dp"
+    android:paddingEnd="6dp"
     android:paddingBottom="6dp">
 
     <!-- Grüner Balken (> 50 %) -->
@@ -31,7 +31,7 @@
         android:max="100"
         android:progress="0"
         android:progressBackgroundTint="#40888888"
-        android:progressTint="#FFA000"
+        android:progressTint="#FDD835"
         android:scaleY="5.0"
         android:visibility="gone" />
 
@@ -49,17 +49,24 @@
         android:scaleY="5.0"
         android:visibility="gone" />
 
-    <!-- Prozentzahl links im Balken -->
+    <!-- Dunkles Prozent-Badge unten links (nur bei voller Kachelbreite sichtbar) -->
     <TextView
         android:id="@+id/ep8_battery_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical|start"
-        android:layout_marginStart="12dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="6dp"
+        android:layout_marginBottom="4dp"
+        android:background="#CC1A1A1A"
         android:includeFontPadding="false"
-        android:text="--"
+        android:paddingStart="5dp"
+        android:paddingTop="1dp"
+        android:paddingEnd="5dp"
+        android:paddingBottom="1dp"
+        android:text="-- %"
         android:textColor="#FFFFFF"
-        android:textSize="14sp"
-        android:textStyle="bold" />
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
 
 </FrameLayout>
