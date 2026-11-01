@@ -2,7 +2,7 @@ name: Build Karoo EP8 APK
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "masterOFF" ]
   workflow_dispatch:
 
 jobs:
