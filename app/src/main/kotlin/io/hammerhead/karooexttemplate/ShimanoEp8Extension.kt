@@ -67,6 +67,9 @@ class Ep8BatteryBarDataType(
 ) : DataTypeImpl(extension, "ep8-battery-bar") {
 
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
+        // Karoo nutzt ein 60-Spalten-Grid: 60 = volle Breite, 30 = halbe Breite
+        val isFullWidth = config.gridSize.first >= 50
+
         val job = scope.launch {
             ep8Manager.telemetry.collectLatest { state ->
                 val views = RemoteViews(context.packageName, R.layout.ep8_battery_view)
@@ -84,6 +87,15 @@ class Ep8BatteryBarDataType(
 
                 views.setViewVisibility(activeBarId, View.VISIBLE)
                 views.setProgressBar(activeBarId, 100, level, false)
+
+                // Prozent-Kästchen wie beim Original nur einblenden, wenn volle Breite verfügbar ist
+                if (isFullWidth) {
+                    val label = if (state.connected) "$level %" else "-- %"
+                    views.setTextViewText(R.id.ep8_battery_text, label)
+                    views.setViewVisibility(R.id.ep8_battery_text, View.VISIBLE)
+                } else {
+                    views.setViewVisibility(R.id.ep8_battery_text, View.GONE)
+                }
 
                 emitter.updateView(views)
             }
