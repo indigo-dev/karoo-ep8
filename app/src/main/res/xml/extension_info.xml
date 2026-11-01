@@ -13,7 +13,7 @@
 
     <DataType
         typeId="ep8-range"
-        displayName="EP8 Restreichweite"
+        displayName="EP8 Reichweite"
         description="Restreichweite im aktiven Modus in km"
         graphical="false" />
 
@@ -25,31 +25,31 @@
 
     <DataType
         typeId="ep8-power"
-        displayName="EP8 Eigenleistung"
+        displayName="EP8 Leistung"
         description="Fahrer-Trittleistung in Watt"
         graphical="false" />
 
     <DataType
         typeId="ep8-cadence"
-        displayName="EP8 Trittfrequenz"
+        displayName="EP8 Kadenz"
         description="Trittfrequenz in RPM"
         graphical="false" />
 
     <DataType
         typeId="ep8-speed"
-        displayName="EP8 Geschwindigkeit"
+        displayName="EP8 Tempo"
         description="E-Bike Geschwindigkeit in km/h"
         graphical="false" />
 
     <DataType
         typeId="ep8-trip"
-        displayName="EP8 Trip-Distanz"
+        displayName="EP8 Trip-km"
         description="Tagesstrecke in km"
         graphical="false" />
 
     <DataType
         typeId="ep8-odometer"
-        displayName="EP8 Gesamtkilometer"
+        displayName="EP8 Gesamt-km"
         description="Gesamtlaufleistung (Odometer)"
         graphical="false" />
 
