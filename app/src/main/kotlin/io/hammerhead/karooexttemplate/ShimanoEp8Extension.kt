@@ -2,6 +2,7 @@ package io.hammerhead.karooexttemplate
 
 import android.content.Context
 import android.graphics.Color
+import android.view.View
 import android.widget.RemoteViews
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.extension.KarooExtension
@@ -59,13 +60,48 @@ class Ep8ModeDataType(
     }
 }
 
+class Ep8BatteryBarDataType(
+    extension: String,
+    private val ep8Manager: ShimanoEp8Manager,
+    private val scope: CoroutineScope
+) : DataTypeImpl(extension, "ep8-battery-bar") {
+
+    override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
+        val job = scope.launch {
+            ep8Manager.telemetry.collectLatest { state ->
+                val views = RemoteViews(context.packageName, R.layout.ep8_battery_view)
+                val level = if (state.connected) state.batteryPercent.coerceIn(0, 100) else 0
+
+                views.setViewVisibility(R.id.ep8_bar_green, View.GONE)
+                views.setViewVisibility(R.id.ep8_bar_yellow, View.GONE)
+                views.setViewVisibility(R.id.ep8_bar_red, View.GONE)
+
+                val activeBarId = when {
+                    level > 50 -> R.id.ep8_bar_green
+                    level > 20 -> R.id.ep8_bar_yellow
+                    else -> R.id.ep8_bar_red
+                }
+
+                views.setViewVisibility(activeBarId, View.VISIBLE)
+                views.setProgressBar(activeBarId, 100, level, false)
+
+                emitter.updateView(views)
+            }
+        }
+        emitter.setCancellable { job.cancel() }
+    }
+}
+
 class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val ep8Manager by lazy { ShimanoEp8Manager(applicationContext) }
 
     override val types: List<DataTypeImpl> by lazy {
-        listOf(Ep8ModeDataType(extension, ep8Manager, scope))
+        listOf(
+            Ep8ModeDataType(extension, ep8Manager, scope),
+            Ep8BatteryBarDataType(extension, ep8Manager, scope)
+        )
     }
 
     override fun startScan(emitter: Emitter<Device>) {
@@ -86,6 +122,7 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                             DataType.dataTypeId(extension, "ep8-mode"),
                             DataType.dataTypeId(extension, "ep8-range"),
                             DataType.dataTypeId(extension, "ep8-battery"),
+                            DataType.dataTypeId(extension, "ep8-battery-bar"),
                             DataType.dataTypeId(extension, "ep8-power"),
                             DataType.dataTypeId(extension, "ep8-cadence"),
                             DataType.dataTypeId(extension, "ep8-speed"),
@@ -115,7 +152,7 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                 }
 
                 if (state.connected) {
-                    // 1. Akkustand (%) -> System-Status + Original-Feld + EP8-Feld
+                    // 1. Akkustand (%) -> System-Status + Original-Feld + EP8-Felder (Numerisch & Balken)
                     val batteryStatus = when {
                         state.batteryPercent > 80 -> BatteryStatus.NEW
                         state.batteryPercent > 50 -> BatteryStatus.GOOD
@@ -138,6 +175,14 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.0") {
                         OnDataPoint(
                             DataPoint(
                                 dataTypeId = DataType.dataTypeId(extension, "ep8-battery"),
+                                values = mapOf(DataType.Field.SINGLE to batteryVal)
+                            )
+                        )
+                    )
+                    emitter.onNext(
+                        OnDataPoint(
+                            DataPoint(
+                                dataTypeId = DataType.dataTypeId(extension, "ep8-battery-bar"),
                                 values = mapOf(DataType.Field.SINGLE to batteryVal)
                             )
                         )
