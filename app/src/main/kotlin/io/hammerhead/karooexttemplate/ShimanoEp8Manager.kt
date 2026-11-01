@@ -20,7 +20,7 @@ data class DiscoveredShimanoBike(
 data class Ep8Telemetry(
     val connected: Boolean = false,
     val batteryPercent: Int = 0,
-    val assistMode: Int = 0,          // 0=OFF, 1=ECO, 2=TRAIL, 3=BOOST, 4=WALK
+    val assistMode: Int = 0,          // 0=OFF, 1=ECO, 2=TRAIL, 3=BOOST, 4=WALK, 5=WALK+
     val assistModeName: String = "OFF",
     val speedKmh: Double = 0.0,
     val riderPowerWatts: Int = 0,
@@ -28,10 +28,9 @@ data class Ep8Telemetry(
     val rangeBoostKm: Int = 0,
     val rangeTrailKm: Int = 0,
     val rangeEcoKm: Int = 0,
-    val tripMeters: Long = 0,
-    val odometerRaw: Long = 0
+    val odometerMeters: Long = 0,     // bytes[1..4] = Gesamtkilometer in Metern (z.B. 32809 m = 32,8 km)
+    val tripMeters: Long = 0          // Gefahrene Meter seit Einschalten/Verbinden
 ) {
-    // Gibt immer genau die EINE Restreichweite passend zum aktuellen Modus zurück
     val activeRangeKm: Int
         get() = when (assistMode) {
             1 -> rangeEcoKm
@@ -61,6 +60,7 @@ class ShimanoEp8Manager(private val context: Context) {
 
     private var bluetoothGatt: BluetoothGatt? = null
     private var activeMacAddress: String? = null
+    private var sessionStartOdoMeters: Long? = null
 
     fun scanForShimanoBikes(): Flow<DiscoveredShimanoBike> = callbackFlow {
         val adapter = BluetoothAdapter.getDefaultAdapter()
@@ -132,6 +132,7 @@ class ShimanoEp8Manager(private val context: Context) {
         }
         bluetoothGatt = null
         activeMacAddress = null
+        sessionStartOdoMeters = null
         _telemetry.value = Ep8Telemetry(connected = false)
     }
 
@@ -143,7 +144,12 @@ class ShimanoEp8Manager(private val context: Context) {
                 gatt.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.w(TAG, "Disconnected from ${gatt.device.address}")
-                _telemetry.value = Ep8Telemetry(connected = false)
+                _telemetry.value = _telemetry.value.copy(
+                    connected = false,
+                    speedKmh = 0.0,
+                    riderPowerWatts = 0,
+                    cadenceRpm = 0
+                )
             }
         }
 
@@ -208,6 +214,7 @@ class ShimanoEp8Manager(private val context: Context) {
                         2 -> "TRAIL"
                         3 -> "BOOST"
                         4 -> "WALK"
+                        5 -> "WALK+"
                         else -> "MODE $mode"
                     }
                     val rawSpeed = uInt16LE(bytes, 2)
@@ -225,18 +232,20 @@ class ShimanoEp8Manager(private val context: Context) {
                 }
             }
 
-            // Paket 0x03: Trip-Meter (Bytes 1..4), Odometer (Bytes 9..12), Range Boost/Trail/Eco (Bytes 13..18)
+            // Paket 0x03: Gesamtkilometer in Metern (Bytes 1..4) & Restreichweiten (Bytes 13..18)
             0x03 -> {
                 if (bytes.size >= 19) {
-                    val tripM = uInt32LE(bytes, 1)
-                    val odoRaw = uInt32LE(bytes, 9)
+                    val totalMeters = uInt32LE(bytes, 1)
+                    val startMeters = sessionStartOdoMeters ?: totalMeters.also { sessionStartOdoMeters = it }
+                    val currentTripMeters = (totalMeters - startMeters).coerceAtLeast(0L)
+
                     val boostKm = uInt16LE(bytes, 13)
                     val trailKm = uInt16LE(bytes, 15)
                     val ecoKm = uInt16LE(bytes, 17)
 
                     _telemetry.value = current.copy(
-                        tripMeters = tripM,
-                        odometerRaw = odoRaw,
+                        odometerMeters = totalMeters,
+                        tripMeters = currentTripMeters,
                         rangeBoostKm = if (boostKm != 0xFFFF) boostKm else current.rangeBoostKm,
                         rangeTrailKm = if (trailKm != 0xFFFF) trailKm else current.rangeTrailKm,
                         rangeEcoKm = if (ecoKm != 0xFFFF) ecoKm else current.rangeEcoKm
