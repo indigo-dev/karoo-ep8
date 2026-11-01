@@ -20,8 +20,14 @@
     <DataType
         typeId="ep8-battery"
         displayName="EP8 Akku"
-        description="Akkuladestand in Prozent"
+        description="Akkuladestand in Prozent (Numerisch)"
         graphical="false" />
+
+    <DataType
+        typeId="ep8-battery-bar"
+        displayName="EP8 Akku Balken"
+        description="Akkuladestand als Balken (Visuell)"
+        graphical="true" />
 
     <DataType
         typeId="ep8-power"
