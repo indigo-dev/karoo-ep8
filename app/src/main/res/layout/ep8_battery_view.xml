@@ -2,23 +2,23 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingStart="10dp"
+    android:paddingStart="8dp"
     android:paddingTop="0dp"
-    android:paddingEnd="10dp"
-    android:paddingBottom="8dp">
+    android:paddingEnd="8dp"
+    android:paddingBottom="6dp">
 
     <!-- Grüner Balken (> 50 %) -->
     <ProgressBar
         android:id="@+id/ep8_bar_green"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="18dp"
+        android:layout_height="22dp"
         android:layout_gravity="center_vertical"
         android:max="100"
         android:progress="0"
         android:progressBackgroundTint="#40888888"
         android:progressTint="#4CAF50"
-        android:scaleY="4.0"
+        android:scaleY="5.0"
         android:visibility="visible" />
 
     <!-- Gelber Balken (21 % bis 50 %) -->
@@ -26,13 +26,13 @@
         android:id="@+id/ep8_bar_yellow"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="18dp"
+        android:layout_height="22dp"
         android:layout_gravity="center_vertical"
         android:max="100"
         android:progress="0"
         android:progressBackgroundTint="#40888888"
-        android:progressTint="#FDD835"
-        android:scaleY="4.0"
+        android:progressTint="#FFA000"
+        android:scaleY="5.0"
         android:visibility="gone" />
 
     <!-- Roter Balken (<= 20 %) -->
@@ -40,13 +40,26 @@
         android:id="@+id/ep8_bar_red"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="18dp"
+        android:layout_height="22dp"
         android:layout_gravity="center_vertical"
         android:max="100"
         android:progress="0"
         android:progressBackgroundTint="#40888888"
         android:progressTint="#F44336"
-        android:scaleY="4.0"
+        android:scaleY="5.0"
         android:visibility="gone" />
+
+    <!-- Prozentzahl links im Balken -->
+    <TextView
+        android:id="@+id/ep8_battery_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|start"
+        android:layout_marginStart="12dp"
+        android:includeFontPadding="false"
+        android:text="--"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold" />
 
 </FrameLayout>
