@@ -19,6 +19,11 @@
     <uses-permission
         android:name="android.permission.ACCESS_COARSE_LOCATION"
         android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
+    <queries>
+        <package android:name="io.hammerhead.karooexttemplate" />
+    </queries>
 
     <application
         android:allowBackup="true"

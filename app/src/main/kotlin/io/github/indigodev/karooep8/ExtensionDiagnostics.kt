@@ -10,7 +10,12 @@ data class DiagnosticSnapshot(
     val karooScanCount: Int = 0,
     val karooScanActive: Boolean = false,
     val reportedDevices: List<String> = emptyList(),
+    val connectRequestCount: Int = 0,
+    val activeConsumers: Int = 0,
     val lastConnectUid: String? = null,
+    val gattConnected: Boolean = false,
+    val lastDisconnectStatus: Int? = null,
+    val gattEvents: List<String> = emptyList(),
     val lastError: String? = null
 )
 
@@ -44,7 +49,41 @@ object ExtensionDiagnostics {
     }
 
     fun onConnectRequested(uid: String) {
-        _state.update { it.copy(lastConnectUid = uid) }
+        _state.update {
+            it.copy(
+                connectRequestCount = it.connectRequestCount + 1,
+                lastConnectUid = uid
+            )
+        }
+    }
+
+    fun onConsumersChanged(activeCount: Int) {
+        _state.update { it.copy(activeConsumers = activeCount) }
+    }
+
+    fun onGattConnected() {
+        _state.update {
+            val events = (it.gattEvents + "STATE_CONNECTED").takeLast(6)
+            it.copy(gattConnected = true, gattEvents = events)
+        }
+    }
+
+    fun onGattDisconnected(status: Int) {
+        _state.update {
+            val events = (it.gattEvents + "DISCONNECTED(status=$status)").takeLast(6)
+            it.copy(
+                gattConnected = false,
+                lastDisconnectStatus = status,
+                gattEvents = events
+            )
+        }
+    }
+
+    fun onGattEvent(event: String) {
+        _state.update {
+            val events = (it.gattEvents + event).takeLast(6)
+            it.copy(gattEvents = events)
+        }
     }
 
     fun onError(message: String) {

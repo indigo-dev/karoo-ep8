@@ -4,14 +4,21 @@
 
     <string name="status_permissions_granted">Permissions active</string>
     <string name="status_permissions_missing">Permissions required</string>
-    <string name="setup_instructions_ready">Press a bike button to wake BLE (15–30s window), then pair under Sensors → \"+\" → Search.</string>
+    <string name="setup_instructions_ready">Turn on the e-bike to connect automatically.\nFor first pairing, go to Sensors → \"+\" → Search within 15s of turning on.</string>
     <string name="setup_instructions_grant">Bluetooth permissions are required to discover and connect to your Shimano e-bike.</string>
     <string name="btn_grant_permissions">Grant permissions</string>
+
+    <string name="legacy_conflict_title">Old App Version Detected</string>
+    <string name="legacy_conflict_desc">The old template package (io.hammerhead.karooexttemplate) is still installed and interferes with the BLE connection.</string>
+    <string name="btn_uninstall_legacy">Uninstall Old Version</string>
 
     <string name="diag_section_title">Diagnostics</string>
     <string name="diag_service_active">Karoo Service: Active</string>
     <string name="diag_service_waiting">Karoo Service: Waiting for Karoo OS</string>
     <string name="diag_karoo_scans">Karoo Sensor Scans</string>
+    <string name="diag_connect_calls">Karoo Connect Calls</string>
+    <string name="diag_gatt_status">GATT Status</string>
+    <string name="diag_gatt_events">GATT Log</string>
     <string name="diag_reported_bikes">Reported to Karoo</string>
     <string name="diag_none">None yet</string>
     <string name="btn_test_ble_scan">Test BLE Scan (10s)</string>

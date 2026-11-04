@@ -1,7 +1,6 @@
 package io.github.indigodev.karooep8
 
 import android.content.Context
-import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
 import io.hammerhead.karooext.extension.DataTypeImpl
@@ -114,11 +113,10 @@ class Ep8BatteryBarDataType(
     }
 }
 
-class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.1.1") {
+class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.1.2") {
 
     companion object {
         private const val UID_PREFIX = "ep8-"
-        private const val SLOW_STREAM_HEARTBEAT_MS = 2_000L
     }
 
     override fun onCreate() {
@@ -187,73 +185,50 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.1.1") {
     override fun connectDevice(uid: String, emitter: Emitter<DeviceEvent>) {
         ExtensionDiagnostics.onConnectRequested(uid)
         val macAddress = uid.removePrefix(UID_PREFIX)
-        emitter.onNext(OnConnectionStatus(ConnectionStatus.SEARCHING))
-        ep8Manager.connect(macAddress)
+        val connectionToken = ep8Manager.acquireConnection(macAddress)
 
         val job = scope.launch {
             var wasConnected = false
-            var lastBatteryStatus: BatteryStatus? = null
-            var lastSlowSnapshot: SlowTelemetrySnapshot? = null
-            var lastSlowEmitElapsedMs = 0L
 
             ep8Manager.telemetry.collectLatest { state ->
                 if (state.connected && !wasConnected) {
                     wasConnected = true
-                    lastBatteryStatus = null
-                    lastSlowSnapshot = null
                     emitter.onNext(OnConnectionStatus(ConnectionStatus.CONNECTED))
                 } else if (!state.connected && wasConnected) {
                     wasConnected = false
                     emitter.onNext(OnConnectionStatus(ConnectionStatus.SEARCHING))
                 }
 
-                if (!state.connected) return@collectLatest
-
-                // 1. Live high-frequency metrics (Power, Cadence, Speed)
-                val powerVal = state.riderPowerWatts.toDouble()
-                emitter.emitSingle(DataType.Type.POWER, DataType.Field.POWER, powerVal)
-                emitter.emitSingle(dtPower, DataType.Field.SINGLE, powerVal)
-
-                val cadenceVal = state.cadenceRpm.toDouble()
-                emitter.emitSingle(DataType.Type.CADENCE, DataType.Field.CADENCE, cadenceVal)
-                emitter.emitSingle(dtCadence, DataType.Field.SINGLE, cadenceVal)
-
-                val speedMps = state.speedKmh / 3.6
-                emitter.emitSingle(DataType.Type.SPEED, DataType.Field.SPEED, speedMps)
-                emitter.emitSingle(dtSpeed, DataType.Field.SINGLE, state.speedKmh)
-
-                // 2. Battery status badge (emit only on threshold change)
-                val batteryStatus = when {
-                    state.batteryPercent > 80 -> BatteryStatus.NEW
-                    state.batteryPercent > 50 -> BatteryStatus.GOOD
-                    state.batteryPercent > 20 -> BatteryStatus.OK
-                    state.batteryPercent > 10 -> BatteryStatus.LOW
-                    else -> BatteryStatus.CRITICAL
-                }
-                if (batteryStatus != lastBatteryStatus) {
-                    lastBatteryStatus = batteryStatus
+                if (state.connected) {
+                    val batteryStatus = when {
+                        state.batteryPercent > 80 -> BatteryStatus.NEW
+                        state.batteryPercent > 50 -> BatteryStatus.GOOD
+                        state.batteryPercent > 20 -> BatteryStatus.OK
+                        state.batteryPercent > 10 -> BatteryStatus.LOW
+                        else -> BatteryStatus.CRITICAL
+                    }
                     emitter.onNext(OnBatteryStatus(batteryStatus))
-                }
-
-                // 3. Slow-changing state metrics: emit immediately on change or every 2s as heartbeat
-                val snapshot = SlowTelemetrySnapshot(
-                    batteryPercent = state.batteryPercent,
-                    assistModeCode = state.assistMode.code,
-                    activeRangeKm = state.activeRangeKm,
-                    tripMeters = state.tripMeters,
-                    odometerMeters = state.odometerMeters
-                )
-                val nowElapsedMs = SystemClock.elapsedRealtime()
-                if (snapshot != lastSlowSnapshot || nowElapsedMs - lastSlowEmitElapsedMs >= SLOW_STREAM_HEARTBEAT_MS) {
-                    lastSlowSnapshot = snapshot
-                    lastSlowEmitElapsedMs = nowElapsedMs
 
                     val batteryVal = state.batteryPercent.toDouble()
                     emitter.emitSingle(DataType.Type.BATTERY_PERCENT, DataType.Field.SINGLE, batteryVal)
                     emitter.emitSingle(dtBattery, DataType.Field.SINGLE, batteryVal)
                     emitter.emitSingle(dtBatteryBar, DataType.Field.SINGLE, batteryVal)
+
                     emitter.emitSingle(dtMode, DataType.Field.SINGLE, state.assistMode.code.toDouble())
                     emitter.emitSingle(dtRange, DataType.Field.SINGLE, state.activeRangeKm.toDouble())
+
+                    val powerVal = state.riderPowerWatts.toDouble()
+                    emitter.emitSingle(DataType.Type.POWER, DataType.Field.POWER, powerVal)
+                    emitter.emitSingle(dtPower, DataType.Field.SINGLE, powerVal)
+
+                    val cadenceVal = state.cadenceRpm.toDouble()
+                    emitter.emitSingle(DataType.Type.CADENCE, DataType.Field.CADENCE, cadenceVal)
+                    emitter.emitSingle(dtCadence, DataType.Field.SINGLE, cadenceVal)
+
+                    val speedMps = state.speedKmh / 3.6
+                    emitter.emitSingle(DataType.Type.SPEED, DataType.Field.SPEED, speedMps)
+                    emitter.emitSingle(dtSpeed, DataType.Field.SINGLE, state.speedKmh)
+
                     emitter.emitSingle(dtTrip, DataType.Field.SINGLE, state.tripMeters / 1000.0)
                     emitter.emitSingle(dtOdometer, DataType.Field.SINGLE, state.odometerMeters / 1000.0)
                 }
@@ -262,7 +237,7 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.1.1") {
 
         emitter.setCancellable {
             job.cancel()
-            ep8Manager.disconnect()
+            ep8Manager.releaseConnection(connectionToken)
         }
     }
 
@@ -276,14 +251,6 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.1.1") {
             )
         )
     }
-
-    private data class SlowTelemetrySnapshot(
-        val batteryPercent: Int,
-        val assistModeCode: Int,
-        val activeRangeKm: Int,
-        val tripMeters: Long,
-        val odometerMeters: Long
-    )
 
     override fun onDestroy() {
         ep8Manager.disconnect()

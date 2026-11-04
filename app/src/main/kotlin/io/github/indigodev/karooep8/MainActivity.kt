@@ -1,6 +1,9 @@
 package io.github.indigodev.karooep8
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -42,8 +45,13 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        private const val LEGACY_PACKAGE = "io.hammerhead.karooexttemplate"
+    }
+
     private val uiScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var permissionsGranted by mutableStateOf(false)
+    private var legacyAppInstalled by mutableStateOf(false)
     private var diagnosticReport by mutableStateOf(BleDiagnosticReport())
     private var testScanJob: Job? = null
 
@@ -57,6 +65,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         permissionsGranted = BlePermissions.hasScanPermissions(this)
+        legacyAppInstalled = isLegacyPackageInstalled()
         if (!permissionsGranted) {
             requestBlePermissions()
         }
@@ -69,9 +78,11 @@ class MainActivity : ComponentActivity() {
                 SetupStatusScreen(
                     versionLabel = versionLabel,
                     permissionsGranted = permissionsGranted,
+                    legacyAppInstalled = legacyAppInstalled,
                     extDiag = extDiag,
                     bleReport = diagnosticReport,
                     onRequestPermissions = ::requestBlePermissions,
+                    onUninstallLegacyApp = ::promptUninstallLegacyApp,
                     onToggleBleScan = ::toggleBleDiagnosticScan
                 )
             }
@@ -81,6 +92,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         permissionsGranted = BlePermissions.hasScanPermissions(this)
+        legacyAppInstalled = isLegacyPackageInstalled()
     }
 
     override fun onPause() {
@@ -96,6 +108,20 @@ class MainActivity : ComponentActivity() {
 
     private fun requestBlePermissions() {
         permissionLauncher.launch(BlePermissions.requiredPermissions())
+    }
+
+    private fun promptUninstallLegacyApp() {
+        val packageUri = Uri.parse("package:$LEGACY_PACKAGE")
+        val uninstallSucceeded = runCatching {
+            startActivity(Intent(Intent.ACTION_DELETE, packageUri))
+            true
+        }.getOrDefault(false)
+
+        if (!uninstallSucceeded) {
+            runCatching {
+                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri))
+            }
+        }
     }
 
     private fun toggleBleDiagnosticScan() {
@@ -119,10 +145,17 @@ class MainActivity : ComponentActivity() {
     }
 
     @Suppress("DEPRECATION")
+    private fun isLegacyPackageInstalled(): Boolean {
+        return runCatching {
+            packageManager.getPackageInfo(LEGACY_PACKAGE, 0) != null
+        }.getOrDefault(false)
+    }
+
+    @Suppress("DEPRECATION")
     private fun getAppVersionName(): String {
         return runCatching {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.1"
-        }.getOrDefault("1.1.1")
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.2"
+        }.getOrDefault("1.1.2")
     }
 }
 
@@ -130,9 +163,11 @@ class MainActivity : ComponentActivity() {
 private fun SetupStatusScreen(
     versionLabel: String,
     permissionsGranted: Boolean,
+    legacyAppInstalled: Boolean,
     extDiag: DiagnosticSnapshot,
     bleReport: BleDiagnosticReport,
     onRequestPermissions: () -> Unit,
+    onUninstallLegacyApp: () -> Unit,
     onToggleBleScan: () -> Unit
 ) {
     val badgeColor = if (permissionsGranted) Color(0xFF4CAF50) else Color(0xFFFFA000)
@@ -167,6 +202,44 @@ private fun SetupStatusScreen(
                 color = Color(0xFF9E9E9E),
                 textAlign = TextAlign.Center
             )
+
+            if (legacyAppInstalled) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF3E2723)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "⚠ ${stringResource(R.string.legacy_conflict_title)}",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFFAB91),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = stringResource(R.string.legacy_conflict_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFFFCCBC),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = onUninstallLegacyApp,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(text = stringResource(R.string.btn_uninstall_legacy))
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -242,6 +315,24 @@ private fun SetupStatusScreen(
                         color = Color(0xFFE0E0E0)
                     )
 
+                    Text(
+                        text = "${stringResource(R.string.diag_connect_calls)}: ${extDiag.connectRequestCount} (active=${extDiag.activeConsumers})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFE0E0E0)
+                    )
+
+                    val gattSummary = buildString {
+                        append(if (extDiag.gattConnected) "Connected" else "Disconnected")
+                        if (extDiag.lastDisconnectStatus != null) {
+                            append(" (last code=${extDiag.lastDisconnectStatus})")
+                        }
+                    }
+                    Text(
+                        text = "${stringResource(R.string.diag_gatt_status)}: $gattSummary",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (extDiag.gattConnected) Color(0xFF81C784) else Color(0xFFE0E0E0)
+                    )
+
                     val reportedSummary = if (extDiag.reportedDevices.isEmpty()) {
                         noneText
                     } else {
@@ -252,6 +343,15 @@ private fun SetupStatusScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFFE0E0E0)
                     )
+
+                    if (extDiag.gattEvents.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${stringResource(R.string.diag_gatt_events)}: ${extDiag.gattEvents.joinToString(" → ")}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF9E9E9E)
+                        )
+                    }
 
                     if (extDiag.lastError != null) {
                         Spacer(modifier = Modifier.height(4.dp))

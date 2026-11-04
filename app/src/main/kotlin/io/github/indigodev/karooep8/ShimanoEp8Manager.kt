@@ -26,7 +26,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -38,7 +37,7 @@ class ShimanoEp8Manager(
     companion object {
         private const val TAG = "KarooEP8"
         private const val RECONNECT_DELAY_MS = 3_000L
-        private const val BATTERY_POLL_INTERVAL_MS = 60_000L
+        private const val DISCONNECT_GRACE_MS = 5_000L
     }
 
     private val _telemetry = MutableStateFlow(Ep8Telemetry())
@@ -48,7 +47,9 @@ class ShimanoEp8Manager(
     private var bluetoothGatt: BluetoothGatt? = null
     private var targetMacAddress: String? = null
     private var reconnectJob: Job? = null
-    private var batteryPollJob: Job? = null
+    private var disconnectGraceJob: Job? = null
+    private var nextToken = 1L
+    private val activeTokens = mutableSetOf<Long>()
 
     @Volatile
     private var sessionStartOdoMeters: Long? = null
@@ -82,26 +83,22 @@ class ShimanoEp8Manager(
 
         val seenMacs = mutableSetOf<String>()
 
-        fun emitKnownDeviceIfShimano(device: BluetoothDevice) {
+        fun emitConnectedIfShimano(device: BluetoothDevice) {
             val mac = device.address ?: return
             val name = runCatching { device.name.orEmpty() }.getOrDefault("")
-            val bondedUuids = runCatching {
+            val uuids = runCatching {
                 device.uuids?.mapNotNull { it?.uuid } ?: emptyList()
             }.getOrDefault(emptyList())
-            if (ShimanoBleParser.isShimanoAdvertisement(name, bondedUuids) && seenMacs.add(mac)) {
+            if (ShimanoBleParser.isShimanoAdvertisement(name, uuids) && seenMacs.add(mac)) {
                 val display = name.ifBlank { "Shimano STEPS ($mac)" }
-                Log.i(TAG, "Found bonded/connected Shimano Bike: $display [$mac]")
+                Log.i(TAG, "Found active Shimano Bike: $display [$mac]")
                 ExtensionDiagnostics.onDeviceReported("$display [$mac]")
                 trySend(DiscoveredShimanoBike(macAddress = mac, displayName = display))
             }
         }
 
-        // Also surface already-connected or OS-bonded Shimano bikes (which may stop advertising while connected)
         runCatching {
-            manager.getConnectedDevices(BluetoothProfile.GATT).forEach(::emitKnownDeviceIfShimano)
-        }
-        runCatching {
-            adapter.bondedDevices?.forEach(::emitKnownDeviceIfShimano)
+            manager.getConnectedDevices(BluetoothProfile.GATT).forEach(::emitConnectedIfShimano)
         }
 
         val scanCallback = object : ScanCallback() {
@@ -170,31 +167,64 @@ class ShimanoEp8Manager(
         }
     }
 
-    fun connect(macAddress: String) {
+    fun acquireConnection(macAddress: String): Long {
+        val token: Long
+        val shouldOpenNewGatt: Boolean
         synchronized(gattLock) {
+            token = nextToken++
+            activeTokens.add(token)
+            ExtensionDiagnostics.onConsumersChanged(activeTokens.size)
+            disconnectGraceJob?.cancel()
+            disconnectGraceJob = null
+
             if (targetMacAddress == macAddress && (_telemetry.value.connected || bluetoothGatt != null)) {
+                shouldOpenNewGatt = false
+            } else {
+                if (targetMacAddress != null && targetMacAddress != macAddress) {
+                    sessionStartOdoMeters = null
+                }
+                targetMacAddress = macAddress
+                reconnectJob?.cancel()
+                reconnectJob = null
+                closeGattLocked()
+                shouldOpenNewGatt = true
+            }
+        }
+        if (shouldOpenNewGatt) {
+            openGattConnection(macAddress)
+        }
+        return token
+    }
+
+    fun releaseConnection(token: Long) {
+        synchronized(gattLock) {
+            activeTokens.remove(token)
+            ExtensionDiagnostics.onConsumersChanged(activeTokens.size)
+            if (activeTokens.isNotEmpty()) {
                 return
             }
-            if (targetMacAddress != null && targetMacAddress != macAddress) {
-                sessionStartOdoMeters = null
+            disconnectGraceJob?.cancel()
+            disconnectGraceJob = scope.launch {
+                delay(DISCONNECT_GRACE_MS)
+                val shouldDisconnect = synchronized(gattLock) {
+                    activeTokens.isEmpty()
+                }
+                if (shouldDisconnect) {
+                    disconnect()
+                }
             }
-            targetMacAddress = macAddress
-            reconnectJob?.cancel()
-            reconnectJob = null
-            batteryPollJob?.cancel()
-            batteryPollJob = null
-            closeGattLocked()
         }
-        openGattConnection(macAddress)
     }
 
     fun disconnect() {
         synchronized(gattLock) {
+            activeTokens.clear()
+            ExtensionDiagnostics.onConsumersChanged(0)
+            disconnectGraceJob?.cancel()
+            disconnectGraceJob = null
             targetMacAddress = null
             reconnectJob?.cancel()
             reconnectJob = null
-            batteryPollJob?.cancel()
-            batteryPollJob = null
             closeGattLocked()
             sessionStartOdoMeters = null
         }
@@ -205,11 +235,12 @@ class ShimanoEp8Manager(
     private fun openGattConnection(macAddress: String) {
         synchronized(gattLock) {
             if (targetMacAddress != macAddress) return
-            closeGattLocked()
+            if (_telemetry.value.connected || bluetoothGatt != null) return
         }
 
         if (!BlePermissions.hasConnectPermissions(context)) {
             Log.w(TAG, "Missing BLUETOOTH_CONNECT permission; retrying in ${RECONNECT_DELAY_MS}ms")
+            ExtensionDiagnostics.onError("Missing BLUETOOTH_CONNECT")
             scheduleReconnect(macAddress)
             return
         }
@@ -217,6 +248,7 @@ class ShimanoEp8Manager(
         val adapter = bluetoothAdapter()
         if (adapter == null || !adapter.isEnabled) {
             Log.w(TAG, "Bluetooth adapter disabled or unavailable; retrying in ${RECONNECT_DELAY_MS}ms")
+            ExtensionDiagnostics.onError("Bluetooth adapter off")
             scheduleReconnect(macAddress)
             return
         }
@@ -224,9 +256,10 @@ class ShimanoEp8Manager(
         try {
             val device = adapter.getRemoteDevice(macAddress)
             Log.i(TAG, "Connecting to Shimano E-Bike ($macAddress)...")
+            ExtensionDiagnostics.onGattEvent("connectGatt($macAddress)")
             val gatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
             synchronized(gattLock) {
-                if (targetMacAddress == macAddress) {
+                if (targetMacAddress == macAddress && bluetoothGatt == null) {
                     bluetoothGatt = gatt
                 } else {
                     gatt?.close()
@@ -234,9 +267,11 @@ class ShimanoEp8Manager(
             }
         } catch (e: SecurityException) {
             Log.e(TAG, "SecurityException connecting to $macAddress", e)
+            ExtensionDiagnostics.onError("SecurityException: ${e.message}")
             scheduleReconnect(macAddress)
         } catch (e: Exception) {
             Log.e(TAG, "Error connecting to $macAddress", e)
+            ExtensionDiagnostics.onError("Connect error: ${e.message}")
             scheduleReconnect(macAddress)
         }
     }
@@ -248,7 +283,9 @@ class ShimanoEp8Manager(
             reconnectJob = scope.launch {
                 delay(RECONNECT_DELAY_MS)
                 val shouldRetry = synchronized(gattLock) {
-                    targetMacAddress == macAddress && !_telemetry.value.connected
+                    targetMacAddress == macAddress &&
+                        !_telemetry.value.connected &&
+                        bluetoothGatt == null
                 }
                 if (shouldRetry) {
                     openGattConnection(macAddress)
@@ -293,6 +330,7 @@ class ShimanoEp8Manager(
                     reconnectJob?.cancel()
                     reconnectJob = null
                 }
+                ExtensionDiagnostics.onGattConnected()
                 _telemetry.update { it.copy(connected = true) }
                 try {
                     gatt.discoverServices()
@@ -301,9 +339,8 @@ class ShimanoEp8Manager(
                 }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.w(TAG, "Disconnected from ${gatt.device.address} (status=$status)")
+                ExtensionDiagnostics.onGattDisconnected(status)
                 synchronized(gattLock) {
-                    batteryPollJob?.cancel()
-                    batteryPollJob = null
                     if (bluetoothGatt === gatt) {
                         bluetoothGatt = null
                     }
@@ -326,30 +363,31 @@ class ShimanoEp8Manager(
             }
         }
 
+        @SuppressLint("MissingPermission")
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (!isActiveGatt(gatt)) return
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 Log.w(TAG, "Service discovery failed with status=$status")
+                ExtensionDiagnostics.onGattEvent("discoverFail($status)")
                 return
             }
+            ExtensionDiagnostics.onGattEvent("servicesDiscovered")
 
-            if (!enableNotifications(gatt, ShimanoBleParser.SERVICE_SHIMANO_DFLY, ShimanoBleParser.CHAR_SHIMANO_TELEMETRY)) {
-                setupBatteryMonitoring(gatt)
-            }
-        }
-
-        override fun onDescriptorWrite(
-            gatt: BluetoothGatt,
-            descriptor: BluetoothGattDescriptor,
-            status: Int
-        ) {
-            if (!isActiveGatt(gatt)) return
-            when (descriptor.characteristic.uuid) {
-                ShimanoBleParser.CHAR_SHIMANO_TELEMETRY -> setupBatteryMonitoring(gatt)
-                ShimanoBleParser.CHAR_BATTERY_LEVEL -> {
-                    readBatteryCharacteristic(gatt)
-                    startBatteryPolling(gatt)
+            // Match original proven handshake: read Battery Level (0x2A19) first, then enable 0x2AC1 notifications
+            val batteryChar = gatt.getService(ShimanoBleParser.SERVICE_BATTERY)
+                ?.getCharacteristic(ShimanoBleParser.CHAR_BATTERY_LEVEL)
+            if (batteryChar != null) {
+                val readInitiated = try {
+                    gatt.readCharacteristic(batteryChar)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to read battery characteristic", e)
+                    false
                 }
+                if (!readInitiated) {
+                    enableTelemetryNotifications(gatt)
+                }
+            } else {
+                enableTelemetryNotifications(gatt)
             }
         }
 
@@ -359,10 +397,7 @@ class ShimanoEp8Manager(
             value: ByteArray,
             status: Int
         ) {
-            if (!isActiveGatt(gatt)) return
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                handleCharacteristicData(characteristic.uuid, value)
-            }
+            handleCharacteristicRead(gatt, characteristic, value, status)
         }
 
         @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
@@ -372,10 +407,7 @@ class ShimanoEp8Manager(
             status: Int
         ) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                if (!isActiveGatt(gatt)) return
-                if (status == BluetoothGatt.GATT_SUCCESS) {
-                    handleCharacteristicData(characteristic.uuid, characteristic.value)
-                }
+                handleCharacteristicRead(gatt, characteristic, characteristic.value, status)
             }
         }
 
@@ -403,28 +435,37 @@ class ShimanoEp8Manager(
     private fun isActiveGatt(gatt: BluetoothGatt): Boolean =
         synchronized(gattLock) { gatt === bluetoothGatt }
 
-    private fun setupBatteryMonitoring(gatt: BluetoothGatt) {
-        if (!enableNotifications(gatt, ShimanoBleParser.SERVICE_BATTERY, ShimanoBleParser.CHAR_BATTERY_LEVEL)) {
-            readBatteryCharacteristic(gatt)
-            startBatteryPolling(gatt)
+    private fun handleCharacteristicRead(
+        gatt: BluetoothGatt,
+        characteristic: BluetoothGattCharacteristic,
+        value: ByteArray?,
+        status: Int
+    ) {
+        if (!isActiveGatt(gatt)) return
+        if (status == BluetoothGatt.GATT_SUCCESS && characteristic.uuid == ShimanoBleParser.CHAR_BATTERY_LEVEL) {
+            val level = ShimanoBleParser.parseBatteryLevel(value) ?: 0
+            _telemetry.update { it.copy(batteryPercent = level) }
+            ExtensionDiagnostics.onGattEvent("battery($level%)")
         }
+        enableTelemetryNotifications(gatt)
     }
 
     @SuppressLint("MissingPermission")
-    private fun enableNotifications(
-        gatt: BluetoothGatt,
-        serviceUuid: UUID,
-        characteristicUuid: UUID
-    ): Boolean {
-        val characteristic = gatt.getService(serviceUuid)?.getCharacteristic(characteristicUuid)
-            ?: return false
-        return try {
-            gatt.setCharacteristicNotification(characteristic, true)
-            val descriptor = characteristic.getDescriptor(ShimanoBleParser.CCCD_UUID) ?: return false
+    private fun enableTelemetryNotifications(gatt: BluetoothGatt) {
+        val telemetryChar = gatt.getService(ShimanoBleParser.SERVICE_SHIMANO_DFLY)
+            ?.getCharacteristic(ShimanoBleParser.CHAR_SHIMANO_TELEMETRY)
+        if (telemetryChar == null) {
+            ExtensionDiagnostics.onGattEvent("missing 0x2AC1")
+            return
+        }
+        try {
+            gatt.setCharacteristicNotification(telemetryChar, true)
+            val descriptor = telemetryChar.getDescriptor(ShimanoBleParser.CCCD_UUID) ?: return
             writeCccdDescriptor(gatt, descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+            ExtensionDiagnostics.onGattEvent("notify(0x2AC1)")
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to enable notifications for $characteristicUuid", e)
-            false
+            Log.w(TAG, "Failed to enable notifications for 0x2AC1", e)
+            ExtensionDiagnostics.onError("Notify error: ${e.message}")
         }
     }
 
@@ -441,33 +482,6 @@ class ShimanoEp8Manager(
             descriptor.value = value
             @Suppress("DEPRECATION")
             gatt.writeDescriptor(descriptor)
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun readBatteryCharacteristic(gatt: BluetoothGatt) {
-        val batteryChar = gatt.getService(ShimanoBleParser.SERVICE_BATTERY)
-            ?.getCharacteristic(ShimanoBleParser.CHAR_BATTERY_LEVEL) ?: return
-        try {
-            gatt.readCharacteristic(batteryChar)
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to read battery characteristic", e)
-        }
-    }
-
-    private fun startBatteryPolling(gatt: BluetoothGatt) {
-        synchronized(gattLock) {
-            if (gatt !== bluetoothGatt) return
-            batteryPollJob?.cancel()
-            batteryPollJob = scope.launch {
-                while (isActive) {
-                    delay(BATTERY_POLL_INTERVAL_MS)
-                    val currentGatt = synchronized(gattLock) {
-                        bluetoothGatt?.takeIf { it === gatt && _telemetry.value.connected }
-                    } ?: break
-                    readBatteryCharacteristic(currentGatt)
-                }
-            }
         }
     }
 
