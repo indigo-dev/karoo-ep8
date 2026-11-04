@@ -18,7 +18,7 @@ Because the EW-EN100 broadcasts e-bike telemetry (assist mode, battery state, re
     * 🔵 **ECO** (Blue) – Eco mode
     * 🟢 **TRAIL** (Green) – Trail mode
     * 🟠 **BOOST** (Yellow/Orange) – Boost mode
-    * 🩵 **WALK** (Cyan) – Walk assist selected (Standby)
+    * 🔵 **WALK** (Cyan) – Walk assist selected (Standby)
     * 🟣 **WALK+** (Purple) – Walk assist active (Motor pushing)
 * **Graphical Battery Bar (`EP8 Battery Bar` / `EP8 Akku Balken`):**
   * Visual progress bar styled to match native Karoo graphics with automatic color thresholds (**Green** > 50%, **Yellow** 21–50%, **Red** ≤ 20%).
