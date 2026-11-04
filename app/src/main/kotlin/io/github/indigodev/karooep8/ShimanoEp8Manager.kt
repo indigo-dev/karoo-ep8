@@ -37,7 +37,9 @@ class ShimanoEp8Manager(
     companion object {
         private const val TAG = "KarooEP8"
         private const val RECONNECT_DELAY_MS = 3_000L
+        private const val FAST_RECONNECT_DELAY_MS = 600L
         private const val DISCONNECT_GRACE_MS = 5_000L
+        private const val SERVICE_DISCOVERY_DELAY_MS = 250L
     }
 
     private val _telemetry = MutableStateFlow(Ep8Telemetry())
@@ -48,6 +50,8 @@ class ShimanoEp8Manager(
     private var targetMacAddress: String? = null
     private var reconnectJob: Job? = null
     private var disconnectGraceJob: Job? = null
+    private var serviceDiscoveryJob: Job? = null
+    private var activeScanCallback: ScanCallback? = null
     private var nextToken = 1L
     private val activeTokens = mutableSetOf<Long>()
 
@@ -59,6 +63,55 @@ class ShimanoEp8Manager(
 
     private fun bluetoothAdapter(): BluetoothAdapter? =
         bluetoothManager()?.adapter
+
+    private fun isLeEnabled(adapter: BluetoothAdapter): Boolean {
+        if (adapter.isEnabled) return true
+        return runCatching {
+            val method = adapter.javaClass.getMethod("isLeEnabled")
+            method.invoke(adapter) as? Boolean ?: false
+        }.getOrDefault(false)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun ensureBleEnabled(adapter: BluetoothAdapter): Boolean {
+        // Register as a BLE app in BluetoothManagerService so Hammerhead's BluetoothCoordinator
+        // cannot tear down GattService when SensorSearchActivity closes, and so BLE can run
+        // in STATE_BLE_ON ("LE only mode") without triggering BluetoothCoordinator's STATE_ON disable.
+        val enableBleResult = runCatching {
+            val method = adapter.javaClass.getMethod("enableBLE")
+            method.invoke(adapter) as? Boolean ?: false
+        }.getOrDefault(false)
+
+        if (isLeEnabled(adapter)) {
+            return true
+        }
+
+        val enableResult = if (!enableBleResult) {
+            runCatching {
+                @Suppress("DEPRECATION")
+                adapter.enable()
+            }.getOrDefault(false)
+        } else {
+            false
+        }
+
+        Log.i(TAG, "Requested Bluetooth LE enable (enableBLE=$enableBleResult, enable=$enableResult)")
+        ExtensionDiagnostics.onGattEvent("enableBLE($enableBleResult/$enableResult)")
+        return isLeEnabled(adapter)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun stopActiveScan() {
+        val callback = synchronized(gattLock) {
+            val current = activeScanCallback
+            activeScanCallback = null
+            current
+        } ?: return
+        runCatching {
+            bluetoothAdapter()?.bluetoothLeScanner?.stopScan(callback)
+            Log.i(TAG, "Stopped active BLE scan before GATT connect")
+        }
+    }
 
     @SuppressLint("MissingPermission")
     fun scanForShimanoBikes(): Flow<DiscoveredShimanoBike> = callbackFlow {
@@ -72,6 +125,9 @@ class ShimanoEp8Manager(
 
         val manager = bluetoothManager()
         val adapter = manager?.adapter
+        if (adapter != null) {
+            ensureBleEnabled(adapter)
+        }
         val scanner = adapter?.bluetoothLeScanner
         if (adapter == null || scanner == null) {
             val msg = "Bluetooth LE scanner unavailable (Bluetooth off?)"
@@ -80,6 +136,7 @@ class ShimanoEp8Manager(
             close()
             return@callbackFlow
         }
+        ExtensionDiagnostics.clearError()
 
         val seenMacs = mutableSetOf<String>()
 
@@ -142,6 +199,9 @@ class ShimanoEp8Manager(
             .build()
 
         val scanStarted = try {
+            synchronized(gattLock) {
+                activeScanCallback = scanCallback
+            }
             scanner.startScan(null, settings, scanCallback)
             true
         } catch (e: SecurityException) {
@@ -157,6 +217,11 @@ class ShimanoEp8Manager(
         }
 
         awaitClose {
+            synchronized(gattLock) {
+                if (activeScanCallback === scanCallback) {
+                    activeScanCallback = null
+                }
+            }
             if (scanStarted) {
                 try {
                     scanner.stopScan(scanCallback)
@@ -246,12 +311,22 @@ class ShimanoEp8Manager(
         }
 
         val adapter = bluetoothAdapter()
-        if (adapter == null || !adapter.isEnabled) {
-            Log.w(TAG, "Bluetooth adapter disabled or unavailable; retrying in ${RECONNECT_DELAY_MS}ms")
-            ExtensionDiagnostics.onError("Bluetooth adapter off")
-            scheduleReconnect(macAddress)
+        if (adapter == null) {
+            Log.w(TAG, "Bluetooth adapter unavailable; retrying in ${RECONNECT_DELAY_MS}ms")
+            ExtensionDiagnostics.onError("Bluetooth adapter null")
+            scheduleReconnect(macAddress, RECONNECT_DELAY_MS)
             return
         }
+
+        if (!ensureBleEnabled(adapter)) {
+            Log.w(TAG, "Bluetooth adapter off — requested enable, retrying in ${FAST_RECONNECT_DELAY_MS}ms")
+            ExtensionDiagnostics.onError("Enabling Bluetooth...")
+            scheduleReconnect(macAddress, FAST_RECONNECT_DELAY_MS)
+            return
+        }
+
+        ExtensionDiagnostics.clearError()
+        stopActiveScan()
 
         try {
             val device = adapter.getRemoteDevice(macAddress)
@@ -268,20 +343,20 @@ class ShimanoEp8Manager(
         } catch (e: SecurityException) {
             Log.e(TAG, "SecurityException connecting to $macAddress", e)
             ExtensionDiagnostics.onError("SecurityException: ${e.message}")
-            scheduleReconnect(macAddress)
+            scheduleReconnect(macAddress, RECONNECT_DELAY_MS)
         } catch (e: Exception) {
             Log.e(TAG, "Error connecting to $macAddress", e)
             ExtensionDiagnostics.onError("Connect error: ${e.message}")
-            scheduleReconnect(macAddress)
+            scheduleReconnect(macAddress, RECONNECT_DELAY_MS)
         }
     }
 
-    private fun scheduleReconnect(macAddress: String) {
+    private fun scheduleReconnect(macAddress: String, delayMs: Long = RECONNECT_DELAY_MS) {
         synchronized(gattLock) {
             if (targetMacAddress != macAddress) return
             reconnectJob?.cancel()
             reconnectJob = scope.launch {
-                delay(RECONNECT_DELAY_MS)
+                delay(delayMs)
                 val shouldRetry = synchronized(gattLock) {
                     targetMacAddress == macAddress &&
                         !_telemetry.value.connected &&
@@ -296,6 +371,8 @@ class ShimanoEp8Manager(
 
     @SuppressLint("MissingPermission")
     private fun closeGattLocked() {
+        serviceDiscoveryJob?.cancel()
+        serviceDiscoveryJob = null
         val gatt = bluetoothGatt ?: return
         bluetoothGatt = null
         try {
@@ -329,18 +406,26 @@ class ShimanoEp8Manager(
                 synchronized(gattLock) {
                     reconnectJob?.cancel()
                     reconnectJob = null
+                    serviceDiscoveryJob?.cancel()
+                    serviceDiscoveryJob = scope.launch {
+                        delay(SERVICE_DISCOVERY_DELAY_MS)
+                        if (isActiveGatt(gatt)) {
+                            try {
+                                gatt.discoverServices()
+                            } catch (e: SecurityException) {
+                                Log.e(TAG, "SecurityException during discoverServices", e)
+                            }
+                        }
+                    }
                 }
                 ExtensionDiagnostics.onGattConnected()
                 _telemetry.update { it.copy(connected = true) }
-                try {
-                    gatt.discoverServices()
-                } catch (e: SecurityException) {
-                    Log.e(TAG, "SecurityException during discoverServices", e)
-                }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.w(TAG, "Disconnected from ${gatt.device.address} (status=$status)")
                 ExtensionDiagnostics.onGattDisconnected(status)
                 synchronized(gattLock) {
+                    serviceDiscoveryJob?.cancel()
+                    serviceDiscoveryJob = null
                     if (bluetoothGatt === gatt) {
                         bluetoothGatt = null
                     }
@@ -358,7 +443,8 @@ class ShimanoEp8Manager(
                     )
                 }
                 if (mac != null) {
-                    scheduleReconnect(mac)
+                    val delayMs = if (status == 255) RECONNECT_DELAY_MS else FAST_RECONNECT_DELAY_MS
+                    scheduleReconnect(mac, delayMs)
                 }
             }
         }

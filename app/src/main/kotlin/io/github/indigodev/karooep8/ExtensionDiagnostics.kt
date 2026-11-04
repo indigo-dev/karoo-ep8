@@ -64,8 +64,12 @@ object ExtensionDiagnostics {
     fun onGattConnected() {
         _state.update {
             val events = (it.gattEvents + "STATE_CONNECTED").takeLast(6)
-            it.copy(gattConnected = true, gattEvents = events)
+            it.copy(gattConnected = true, gattEvents = events, lastError = null)
         }
+    }
+
+    fun clearError() {
+        _state.update { it.copy(lastError = null) }
     }
 
     fun onGattDisconnected(status: Int) {
