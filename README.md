@@ -9,9 +9,10 @@ Because the EW-EN100 broadcasts e-bike telemetry (assist mode, battery state, re
 ## ✨ Features
 
 * **Direct BLE Pairing in the Karoo Sensor Menu:** Discovers Shimano EW-EN100 / STEPS units directly under *Sensors -> `+` -> Search*.
+* **Automatic BLE Reconnection & Live Battery Monitoring:** Automatically reconnects after mid-ride power-offs without resetting session trip distance, and tracks battery percentage via GATT notifications + periodic fallback polling.
 * **Virtual Sensor for Native Karoo Data Fields:**
   * Feeds native Karoo data fields for **Speed** (`SPEED`, including average, max, and auto-pause), **Cadence** (`CADENCE`), **Rider Power** (`POWER`, including 3s/10s smoothed watts, Normalized Power, and zones), and **Sensor Battery** (`BATTERY_PERCENT`).
-* **Graphical Assist Mode Tile (`EP8 Modus`):**
+* **Graphical Assist Mode Tile (`EP8 Mode` / `EP8 Modus`):**
   * Clear text indicator paired with a colored status dot matching the official Shimano color scheme:
     * ⚫ **OFF** (Gray) – Motor assistance off
     * 🔵 **ECO** (Blue) – Eco mode
@@ -19,13 +20,14 @@ Because the EW-EN100 broadcasts e-bike telemetry (assist mode, battery state, re
     * 🟠 **BOOST** (Yellow/Orange) – Boost mode
     * 🩵 **WALK** (Cyan) – Walk assist selected (Standby)
     * 🟣 **WALK+** (Purple) – Walk assist active (Motor pushing)
-* **Graphical Battery Bar (`EP8 Akku Balken`):**
+* **Graphical Battery Bar (`EP8 Battery Bar` / `EP8 Akku Balken`):**
   * Visual progress bar styled to match native Karoo graphics with automatic color thresholds (**Green** > 50%, **Yellow** 21–50%, **Red** ≤ 20%).
   * **Responsive Percentage Badge:** When placed in a full-width data field (`gridSize == 60`), a dark percentage badge (e.g., `62 %`) automatically appears in the bottom-left corner of the bar, replicating the native Hammerhead e-bike battery field.
-* **Dynamic Remaining Range (`EP8 Reichweite`):**
+* **Dynamic Remaining Range (`EP8 Range` / `EP8 Reichweite`):**
   * A single, unified data field that automatically displays the remaining range in kilometers matching the currently active assist mode (`ECO`, `TRAIL`, or `BOOST`).
 * **True Motor Odometer & Session Trip Counter:**
   * Decodes the internal total distance (odometer) of the EP8 motor down to the meter and calculates the current session trip distance since connection.
+* **Localized (English & German):** Automatically displays English or German data field names based on Karoo system language.
 
 ---
 
@@ -35,17 +37,17 @@ Once your e-bike is paired, the following data fields are available in the Karoo
 
 ### 1. Custom Extension Data Fields (Category: *Shimano EP8 E-Bike*)
 
-| Data Field | Type | Unit / Format | Description |
+| Data Field (EN / DE) | Type | Unit / Format | Description |
 | :--- | :---: | :---: | :--- |
-| **EP8 Modus** | Graphical | `● OFF` / `ECO` / `TRAIL` / `BOOST` / `WALK` / `WALK+` | Current assist mode with Shimano color-coded status dot |
-| **EP8 Reichweite** | Numeric | `km` | Remaining range for the currently active assist mode |
-| **EP8 Akku** | Numeric | `%` | Battery state of charge as a large numeric percentage (`0–100`) |
-| **EP8 Akku Balken** | Graphical | Progress Bar (+ `%` on full width) | Color-changing battery bar (Green/Yellow/Red) with percentage badge in 1-column full-width layouts |
-| **EP8 Leistung** | Numeric | `W` | Current rider pedal power in Watts |
-| **EP8 Kadenz** | Numeric | `RPM` | Current pedaling cadence |
-| **EP8 Tempo** | Numeric | `km/h` | Current e-bike speed from the rear wheel sensor |
-| **EP8 Trip-km** | Numeric | `km` | Trip distance ridden since powering on / connecting |
-| **EP8 Gesamt-km** | Numeric | `km` | Total motor odometer distance |
+| **EP8 Mode** / **EP8 Modus** | Graphical | `● OFF` / `ECO` / `TRAIL` / `BOOST` / `WALK` / `WALK+` | Current assist mode with Shimano color-coded status dot |
+| **EP8 Range** / **EP8 Reichweite** | Numeric | `km` | Remaining range for the currently active assist mode |
+| **EP8 Battery** / **EP8 Akku** | Numeric | `%` | Battery state of charge as a large numeric percentage (`0–100`) |
+| **EP8 Battery Bar** / **EP8 Akku Balken** | Graphical | Progress Bar (+ `%` on full width) | Color-changing battery bar (Green/Yellow/Red) with percentage badge in 1-column full-width layouts |
+| **EP8 Power** / **EP8 Leistung** | Numeric | `W` | Current rider pedal power in Watts |
+| **EP8 Cadence** / **EP8 Kadenz** | Numeric | `RPM` | Current pedaling cadence |
+| **EP8 Speed** / **EP8 Tempo** | Numeric | `km/h` | Current e-bike speed from the rear wheel sensor |
+| **EP8 Trip** / **EP8 Trip-km** | Numeric | `km` | Trip distance ridden since connecting |
+| **EP8 Odometer** / **EP8 Gesamt-km** | Numeric | `km` | Total motor odometer distance |
 
 ### 2. Supported Native Karoo System Fields
 
@@ -90,12 +92,13 @@ Communication uses Bluetooth Low Energy (GATT) via the standard Battery Service 
 ## 🛠️ Installation & Setup on Karoo 3
 
 1. **Download the APK:**
-   * Download the latest `app-debug.apk` from the **GitHub Actions Artifacts** (or the *Releases* section).
+   * Download the latest `karoo-ep8.apk` from the **GitHub Actions Artifacts** (or the *Releases* section).
 2. **Sideload via ADB or Companion App:**
    * Enable Developer Options and *USB Debugging* on your Karoo 3.
+   * *(Note: If upgrading from an older pre-1.1 build using the template package ID, uninstall it once first via `adb uninstall io.hammerhead.karooexttemplate`).*
    * Install the APK from your computer using ADB:
      ```bash
-     adb install -r app-debug.apk
+     adb install -r karoo-ep8.apk
      ```
    * *(Alternatively, sideload the APK using the Hammerhead Companion App on your smartphone).*
 3. **Grant Permissions Once:**
@@ -106,24 +109,33 @@ Communication uses Bluetooth Low Energy (GATT) via the standard Battery Service 
    * Select your discovered bike (e.g., `EWEN100...` or `Shimano STEPS`) and confirm pairing.
 5. **Add Data Fields to Your Ride Profile:**
    * Go to **Profiles** -> select your e-bike profile -> **Data Pages**.
-   * Add any fields from the **Shimano EP8 E-Bike** category (e.g., *EP8 Modus*, *EP8 Akku Balken*, *EP8 Reichweite*) or native Karoo sensor fields.
+   * Add any fields from the **Shimano EP8 E-Bike** category (e.g., *EP8 Mode* / *EP8 Modus*, *EP8 Battery Bar* / *EP8 Akku Balken*, *EP8 Range* / *EP8 Reichweite*) or native Karoo sensor fields.
 
 ---
 
 ## 📁 Project Structure
 
 ```text
-app/src/main/
-├── AndroidManifest.xml
-├── kotlin/io/hammerhead/karooexttemplate/
-│   ├── MainActivity.kt          # Permission setup (BLE & Location) on first launch
-│   ├── ShimanoEp8Manager.kt     # BLE scanner, GATT connection & byte parser (Packets 0x02 / 0x03)
-│   └── ShimanoEp8Extension.kt   # KarooExtension service, virtual sensor & RemoteViews tiles
-└── res/
-    ├── layout/
-    │   ├── ep8_mode_view.xml    # Layout for the Assist Mode tile (colored dot + text)
-    │   └── ep8_battery_view.xml # Layout for the Battery Bar (ProgressBars + percentage badge)
-    ├── values/
-    │   └── strings.xml          # App and extension display strings
-    └── xml/
-        └── extension_info.xml   # Extension & DataType registration for Karoo OS
+app/src/
+├── main/
+│   ├── AndroidManifest.xml
+│   ├── kotlin/io/github/indigodev/karooep8/
+│   │   ├── MainActivity.kt          # Permission setup & status UI (BLE & Location)
+│   │   ├── BlePermissions.kt        # Runtime BLE & Location permission checks
+│   │   ├── Ep8Models.kt             # AssistMode enum & telemetry data models
+│   │   ├── ShimanoBleParser.kt      # Pure binary BLE packet parser (0x02, 0x03, 0x2A19)
+│   │   ├── ShimanoEp8Manager.kt     # BLE scanner, sequential GATT client & auto-reconnect
+│   │   └── ShimanoEp8Extension.kt   # KarooExtension service, virtual sensor & RemoteViews tiles
+│   └── res/
+│       ├── layout/
+│       │   ├── ep8_mode_view.xml    # Layout for the Assist Mode tile (colored dot + text)
+│       │   └── ep8_battery_view.xml # Layout for the Battery Bar (ProgressBars + percentage badge)
+│       ├── values/
+│       │   └── strings.xml          # English default strings
+│       ├── values-de/
+│       │   └── strings.xml          # German localized strings
+│       └── xml/
+│           └── extension_info.xml   # Extension & DataType registration for Karoo OS
+└── test/kotlin/io/github/indigodev/karooep8/
+    └── ShimanoBleParserTest.kt      # Unit tests for Shimano BLE protocol decoding
+```

@@ -1,5 +1,29 @@
 <resources>
     <string name="app_name">Shimano EP8</string>
     <string name="extension_name">Shimano EP8 E-Bike</string>
-    <string name="hello_karoo">Shimano EP8 Extension bereit!\nBitte jetzt unter Sensoren -> \u0027+\u0027 nach dem E-Bike suchen.</string>
+
+    <string name="status_permissions_granted">Permissions active</string>
+    <string name="status_permissions_missing">Permissions required</string>
+    <string name="setup_instructions_ready">Shimano EP8 extension is ready.\nPair your e-bike under Sensors → \"+\" → Search.</string>
+    <string name="setup_instructions_grant">Bluetooth and Location permissions are required to discover and connect to your Shimano e-bike.</string>
+    <string name="btn_grant_permissions">Grant permissions</string>
+
+    <string name="dt_mode_name">EP8 Mode</string>
+    <string name="dt_mode_desc">Assist mode (OFF, ECO, TRAIL, BOOST, WALK)</string>
+    <string name="dt_range_name">EP8 Range</string>
+    <string name="dt_range_desc">Remaining range for active mode in km</string>
+    <string name="dt_battery_name">EP8 Battery</string>
+    <string name="dt_battery_desc">Battery level in percent (numeric)</string>
+    <string name="dt_battery_bar_name">EP8 Battery Bar</string>
+    <string name="dt_battery_bar_desc">Battery level progress bar (visual)</string>
+    <string name="dt_power_name">EP8 Power</string>
+    <string name="dt_power_desc">Rider pedal power in Watts</string>
+    <string name="dt_cadence_name">EP8 Cadence</string>
+    <string name="dt_cadence_desc">Pedaling cadence in RPM</string>
+    <string name="dt_speed_name">EP8 Speed</string>
+    <string name="dt_speed_desc">E-bike speed in km/h</string>
+    <string name="dt_trip_name">EP8 Trip</string>
+    <string name="dt_trip_desc">Session trip distance in km</string>
+    <string name="dt_odometer_name">EP8 Odometer</string>
+    <string name="dt_odometer_desc">Total motor odometer in km</string>
 </resources>

@@ -9,3 +9,7 @@
 .cxx
 local.properties
 /app/release
+/signing/
+*.jks
+*.p12
+*.keystore

@@ -10,18 +10,20 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // karoo-ext from Github Packages
+        // karoo-ext from GitHub Packages
         maven {
             url = uri("https://maven.pkg.github.com/hammerheadnav/karoo-ext")
             credentials {
-                // username = providers.gradleProperty("gpr.user").getOrElse(System.getenv("USERNAME"))
-                // password = providers.gradleProperty("gpr.key").getOrElse(System.getenv("TOKEN"))
-                username = System.getenv("GH_USERNAME")
-                password = System.getenv("GH_TOKEN")
+                username = providers.gradleProperty("gpr.user")
+                    .orElse(providers.environmentVariable("GH_USERNAME"))
+                    .orNull
+                password = providers.gradleProperty("gpr.key")
+                    .orElse(providers.environmentVariable("GH_TOKEN"))
+                    .orNull
             }
         }
     }
 }
 
-rootProject.name = "Karoo Extension Template"
+rootProject.name = "karoo-ep8"
 include("app")

@@ -7,56 +7,56 @@
 
     <DataType
         typeId="ep8-mode"
-        displayName="EP8 Modus"
-        description="Unterstützungsstufe (OFF, ECO, TRAIL, BOOST, WALK)"
+        displayName="@string/dt_mode_name"
+        description="@string/dt_mode_desc"
         graphical="true" />
 
     <DataType
         typeId="ep8-range"
-        displayName="EP8 Reichweite"
-        description="Restreichweite im aktiven Modus in km"
+        displayName="@string/dt_range_name"
+        description="@string/dt_range_desc"
         graphical="false" />
 
     <DataType
         typeId="ep8-battery"
-        displayName="EP8 Akku"
-        description="Akkuladestand in Prozent (Numerisch)"
+        displayName="@string/dt_battery_name"
+        description="@string/dt_battery_desc"
         graphical="false" />
 
     <DataType
         typeId="ep8-battery-bar"
-        displayName="EP8 Akku Balken"
-        description="Akkuladestand als Balken (Visuell)"
+        displayName="@string/dt_battery_bar_name"
+        description="@string/dt_battery_bar_desc"
         graphical="true" />
 
     <DataType
         typeId="ep8-power"
-        displayName="EP8 Leistung"
-        description="Fahrer-Trittleistung in Watt"
+        displayName="@string/dt_power_name"
+        description="@string/dt_power_desc"
         graphical="false" />
 
     <DataType
         typeId="ep8-cadence"
-        displayName="EP8 Kadenz"
-        description="Trittfrequenz in RPM"
+        displayName="@string/dt_cadence_name"
+        description="@string/dt_cadence_desc"
         graphical="false" />
 
     <DataType
         typeId="ep8-speed"
-        displayName="EP8 Tempo"
-        description="E-Bike Geschwindigkeit in km/h"
+        displayName="@string/dt_speed_name"
+        description="@string/dt_speed_desc"
         graphical="false" />
 
     <DataType
         typeId="ep8-trip"
-        displayName="EP8 Trip-km"
-        description="Tagesstrecke in km"
+        displayName="@string/dt_trip_name"
+        description="@string/dt_trip_desc"
         graphical="false" />
 
     <DataType
         typeId="ep8-odometer"
-        displayName="EP8 Gesamt-km"
-        description="Gesamtlaufleistung (Odometer)"
+        displayName="@string/dt_odometer_name"
+        description="@string/dt_odometer_desc"
         graphical="false" />
 
 </ExtensionInfo>
