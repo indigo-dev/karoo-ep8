@@ -128,20 +128,36 @@ class ShimanoBleParserTest {
     }
 
     @Test
-    fun `isShimanoAdvertisement matches UUIDs and Shimano names`() {
+    fun `isShimanoAdvertisement matches UUIDs, manufacturer ID, and Shimano names`() {
         assertTrue(
             ShimanoBleParser.isShimanoAdvertisement(
                 deviceName = "Custom Bike Name",
                 serviceUuids = listOf(ShimanoBleParser.SERVICE_SHIMANO_AUTH)
             )
         )
+        assertTrue(
+            ShimanoBleParser.isShimanoAdvertisement(
+                deviceName = "Renamed Orbea Rise",
+                serviceUuids = listOf(UUID.fromString("000018fe-5348-494d-414e-4f5f424c4500"))
+            )
+        )
+        assertTrue(
+            ShimanoBleParser.isShimanoAdvertisement(
+                deviceName = "My Canyon",
+                serviceUuids = emptyList(),
+                manufacturerIds = setOf(ShimanoBleParser.SHIMANO_COMPANY_ID)
+            )
+        )
         assertTrue(ShimanoBleParser.isShimanoAdvertisement("EW-EN100", emptyList()))
         assertTrue(ShimanoBleParser.isShimanoAdvertisement("SC-EM800", emptyList()))
+        assertTrue(ShimanoBleParser.isShimanoAdvertisement("SC-EN600", emptyList()))
         assertTrue(ShimanoBleParser.isShimanoAdvertisement("Shimano STEPS", emptyList()))
+        assertTrue(ShimanoBleParser.isShimanoAdvertisement("EP600", emptyList()))
         assertFalse(
             ShimanoBleParser.isShimanoAdvertisement(
                 deviceName = "Garmin HRM-Pro",
-                serviceUuids = listOf(UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb"))
+                serviceUuids = listOf(UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb")),
+                manufacturerIds = setOf(0x0087)
             )
         )
     }

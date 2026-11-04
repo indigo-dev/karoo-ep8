@@ -4,9 +4,22 @@
 
     <string name="status_permissions_granted">Berechtigungen aktiv</string>
     <string name="status_permissions_missing">Berechtigungen erforderlich</string>
-    <string name="setup_instructions_ready">Shimano EP8 Extension bereit!\nBitte jetzt unter Sensoren → \"+\" → Suchen das E-Bike koppeln.</string>
-    <string name="setup_instructions_grant">Bluetooth- und Standort-Berechtigungen werden benötigt, um das Shimano E-Bike zu finden und zu verbinden.</string>
+    <string name="setup_instructions_ready">Taste am E-Bike drücken (15–30s BLE-Fenster) und unter Sensoren → \"+\" → Suchen koppeln.</string>
+    <string name="setup_instructions_grant">Bluetooth-Berechtigungen werden benötigt, um das Shimano E-Bike zu finden und zu verbinden.</string>
     <string name="btn_grant_permissions">Berechtigungen erteilen</string>
+
+    <string name="diag_section_title">Diagnose</string>
+    <string name="diag_service_active">Karoo-Dienst: Aktiv</string>
+    <string name="diag_service_waiting">Karoo-Dienst: Wartet auf Karoo OS</string>
+    <string name="diag_karoo_scans">Karoo Sensor-Scans</string>
+    <string name="diag_reported_bikes">An Karoo gemeldet</string>
+    <string name="diag_none">Noch keine</string>
+    <string name="btn_test_ble_scan">BLE Test-Scan (10s)</string>
+    <string name="btn_stop_ble_scan">BLE-Scan stoppen</string>
+    <string name="diag_scanning_now">Suche nach BLE-Geräten…</string>
+    <string name="diag_ble_packets">Empfangene BLE-Pakete</string>
+    <string name="diag_shimano_found">Gefundene Shimano E-Bikes</string>
+    <string name="diag_other_ble">Andere BLE-Geräte in Reichweite</string>
 
     <string name="dt_mode_name">EP8 Modus</string>
     <string name="dt_mode_desc">Unterstützungsstufe (OFF, ECO, TRAIL, BOOST, WALK)</string>

@@ -22,13 +22,23 @@ object ShimanoBleParser {
     private const val INVALID_UINT16 = 0xFFFF
     private const val INVALID_UINT32 = 0xFFFF_FFFFL
 
+    const val SHIMANO_COMPANY_ID = 0x044A
+    private const val SHIMANO_UUID_SUFFIX = "-5348-494d-414e-4f5f424c4500"
+
     data class TelemetryParseResult(
         val telemetry: Ep8Telemetry,
         val sessionStartOdoMeters: Long?
     )
 
-    fun isShimanoAdvertisement(deviceName: String?, serviceUuids: List<UUID>): Boolean {
-        if (serviceUuids.contains(SERVICE_SHIMANO_DFLY) || serviceUuids.contains(SERVICE_SHIMANO_AUTH)) {
+    fun isShimanoAdvertisement(
+        deviceName: String?,
+        serviceUuids: List<UUID>,
+        manufacturerIds: Set<Int> = emptySet()
+    ): Boolean {
+        if (manufacturerIds.contains(SHIMANO_COMPANY_ID)) {
+            return true
+        }
+        if (serviceUuids.any { it.toString().endsWith(SHIMANO_UUID_SUFFIX, ignoreCase = true) }) {
             return true
         }
         val name = deviceName?.trim().orEmpty()
@@ -36,7 +46,9 @@ object ShimanoBleParser {
         return name.startsWith("EW", ignoreCase = true) ||
             name.startsWith("SC-E", ignoreCase = true) ||
             name.contains("SHIMANO", ignoreCase = true) ||
-            name.contains("EP8", ignoreCase = true)
+            name.contains("STEPS", ignoreCase = true) ||
+            name.contains("EP8", ignoreCase = true) ||
+            name.contains("EP6", ignoreCase = true)
     }
 
     fun parseBatteryLevel(bytes: ByteArray?): Int? {

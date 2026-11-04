@@ -53,27 +53,56 @@ class ShimanoEp8Manager(
     @Volatile
     private var sessionStartOdoMeters: Long? = null
 
-    private fun bluetoothAdapter(): BluetoothAdapter? {
-        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-        return manager?.adapter
-    }
+    private fun bluetoothManager(): BluetoothManager? =
+        context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+
+    private fun bluetoothAdapter(): BluetoothAdapter? =
+        bluetoothManager()?.adapter
 
     @SuppressLint("MissingPermission")
     fun scanForShimanoBikes(): Flow<DiscoveredShimanoBike> = callbackFlow {
         if (!BlePermissions.hasScanPermissions(context)) {
-            Log.w(TAG, "Cannot start BLE scan: missing Bluetooth/Location permissions")
+            val msg = "Missing Bluetooth scan permissions"
+            Log.w(TAG, msg)
+            ExtensionDiagnostics.onError(msg)
             close()
             return@callbackFlow
         }
 
-        val scanner = bluetoothAdapter()?.bluetoothLeScanner
-        if (scanner == null) {
-            Log.w(TAG, "Cannot start BLE scan: Bluetooth LE scanner unavailable")
+        val manager = bluetoothManager()
+        val adapter = manager?.adapter
+        val scanner = adapter?.bluetoothLeScanner
+        if (adapter == null || scanner == null) {
+            val msg = "Bluetooth LE scanner unavailable (Bluetooth off?)"
+            Log.w(TAG, msg)
+            ExtensionDiagnostics.onError(msg)
             close()
             return@callbackFlow
         }
 
         val seenMacs = mutableSetOf<String>()
+
+        fun emitKnownDeviceIfShimano(device: BluetoothDevice) {
+            val mac = device.address ?: return
+            val name = runCatching { device.name.orEmpty() }.getOrDefault("")
+            val bondedUuids = runCatching {
+                device.uuids?.mapNotNull { it?.uuid } ?: emptyList()
+            }.getOrDefault(emptyList())
+            if (ShimanoBleParser.isShimanoAdvertisement(name, bondedUuids) && seenMacs.add(mac)) {
+                val display = name.ifBlank { "Shimano STEPS ($mac)" }
+                Log.i(TAG, "Found bonded/connected Shimano Bike: $display [$mac]")
+                ExtensionDiagnostics.onDeviceReported("$display [$mac]")
+                trySend(DiscoveredShimanoBike(macAddress = mac, displayName = display))
+            }
+        }
+
+        // Also surface already-connected or OS-bonded Shimano bikes (which may stop advertising while connected)
+        runCatching {
+            manager.getConnectedDevices(BluetoothProfile.GATT).forEach(::emitKnownDeviceIfShimano)
+        }
+        runCatching {
+            adapter.bondedDevices?.forEach(::emitKnownDeviceIfShimano)
+        }
 
         val scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -85,16 +114,29 @@ class ShimanoEp8Manager(
                     result.scanRecord?.deviceName.orEmpty()
                 }
                 val uuids = result.scanRecord?.serviceUuids?.map { it.uuid } ?: emptyList()
+                val mfgData = result.scanRecord?.manufacturerSpecificData
+                val manufacturerIds = if (mfgData != null && mfgData.size() > 0) {
+                    buildSet {
+                        for (i in 0 until mfgData.size()) {
+                            add(mfgData.keyAt(i))
+                        }
+                    }
+                } else {
+                    emptySet()
+                }
 
-                if (ShimanoBleParser.isShimanoAdvertisement(name, uuids) && seenMacs.add(mac)) {
+                if (ShimanoBleParser.isShimanoAdvertisement(name, uuids, manufacturerIds) && seenMacs.add(mac)) {
                     val display = name.ifBlank { "Shimano STEPS ($mac)" }
                     Log.i(TAG, "Discovered Shimano Bike: $display [$mac]")
+                    ExtensionDiagnostics.onDeviceReported("$display [$mac]")
                     trySend(DiscoveredShimanoBike(macAddress = mac, displayName = display))
                 }
             }
 
             override fun onScanFailed(errorCode: Int) {
-                Log.e(TAG, "BLE Scan failed with error: $errorCode")
+                val msg = "BLE Scan failed (code=$errorCode)"
+                Log.e(TAG, msg)
+                ExtensionDiagnostics.onError(msg)
             }
         }
 
@@ -107,10 +149,12 @@ class ShimanoEp8Manager(
             true
         } catch (e: SecurityException) {
             Log.e(TAG, "SecurityException starting BLE scan", e)
+            ExtensionDiagnostics.onError("SecurityException: ${e.message}")
             close()
             false
         } catch (e: Exception) {
             Log.e(TAG, "Error starting BLE scan", e)
+            ExtensionDiagnostics.onError("Scan error: ${e.message}")
             close()
             false
         }
@@ -289,8 +333,6 @@ class ShimanoEp8Manager(
                 return
             }
 
-            // Step 1: Enable live telemetry notifications first (0x2AC1).
-            // Android BLE requires GATT descriptor writes & reads to execute sequentially.
             if (!enableNotifications(gatt, ShimanoBleParser.SERVICE_SHIMANO_DFLY, ShimanoBleParser.CHAR_SHIMANO_TELEMETRY)) {
                 setupBatteryMonitoring(gatt)
             }
@@ -303,9 +345,7 @@ class ShimanoEp8Manager(
         ) {
             if (!isActiveGatt(gatt)) return
             when (descriptor.characteristic.uuid) {
-                // Step 2: After telemetry CCCD completes, enable battery notifications (0x2A19).
                 ShimanoBleParser.CHAR_SHIMANO_TELEMETRY -> setupBatteryMonitoring(gatt)
-                // Step 3: After battery CCCD completes, perform initial battery read & start poll fallback.
                 ShimanoBleParser.CHAR_BATTERY_LEVEL -> {
                     readBatteryCharacteristic(gatt)
                     startBatteryPolling(gatt)

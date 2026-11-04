@@ -114,11 +114,16 @@ class Ep8BatteryBarDataType(
     }
 }
 
-class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.1.0") {
+class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.1.1") {
 
     companion object {
         private const val UID_PREFIX = "ep8-"
         private const val SLOW_STREAM_HEARTBEAT_MS = 2_000L
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        ExtensionDiagnostics.onServiceCreated()
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -160,6 +165,7 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.1.0") {
     }
 
     override fun startScan(emitter: Emitter<Device>) {
+        ExtensionDiagnostics.onKarooScanStarted()
         val job = scope.launch {
             ep8Manager.scanForShimanoBikes().collect { bike ->
                 emitter.onNext(
@@ -172,10 +178,14 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.1.0") {
                 )
             }
         }
-        emitter.setCancellable { job.cancel() }
+        emitter.setCancellable {
+            ExtensionDiagnostics.onKarooScanStopped()
+            job.cancel()
+        }
     }
 
     override fun connectDevice(uid: String, emitter: Emitter<DeviceEvent>) {
+        ExtensionDiagnostics.onConnectRequested(uid)
         val macAddress = uid.removePrefix(UID_PREFIX)
         emitter.onNext(OnConnectionStatus(ConnectionStatus.SEARCHING))
         ep8Manager.connect(macAddress)

@@ -24,8 +24,8 @@ android {
         applicationId = "io.github.indigodev.karooep8"
         minSdk = 23
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.1.1"
     }
 
     val keystoreFile = System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotBlank() }?.let(::file)
