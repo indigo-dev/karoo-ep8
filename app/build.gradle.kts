@@ -1,9 +1,19 @@
 import java.security.KeyStore
+import java.util.Collections
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.compose.compiler)
+}
+
+fun cleanSecretEnv(name: String): String? {
+    val raw = System.getenv(name) ?: return null
+    val lastLine = raw.lineSequence()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("SIGNING_") }
+        .lastOrNull() ?: return null
+    return lastLine.substringAfterLast('=').trim().takeIf { it.isNotEmpty() }
 }
 
 android {
@@ -19,9 +29,9 @@ android {
     }
 
     val keystoreFile = System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotBlank() }?.let(::file)
-    val keystorePassword = System.getenv("KEYSTORE_PASSWORD")?.takeIf { it.isNotBlank() }
-    val requestedAlias = System.getenv("KEY_ALIAS")?.takeIf { it.isNotBlank() } ?: "karoo-ep8"
-    val keyAliasPassword = System.getenv("KEY_PASSWORD")?.takeIf { it.isNotBlank() } ?: keystorePassword
+    val keystorePassword = cleanSecretEnv("KEYSTORE_PASSWORD")
+    val requestedAlias = cleanSecretEnv("KEY_ALIAS") ?: "karoo-ep8"
+    val keyAliasPassword = cleanSecretEnv("KEY_PASSWORD") ?: keystorePassword
     val hasReleaseSigning = keystoreFile != null &&
         keystoreFile.exists() &&
         keystorePassword != null &&
@@ -34,7 +44,7 @@ android {
                 if (ks.containsAlias(requestedAlias) && ks.isKeyEntry(requestedAlias)) {
                     requestedAlias
                 } else {
-                    java.util.Collections.list(ks.aliases()).firstOrNull { ks.isKeyEntry(it) } ?: requestedAlias
+                    Collections.list(ks.aliases()).firstOrNull { ks.isKeyEntry(it) } ?: requestedAlias
                 }
             }.getOrDefault(requestedAlias)
 

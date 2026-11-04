@@ -34,9 +34,29 @@ jobs:
           SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
         run: |
           if [ -n "$SIGNING_KEYSTORE_BASE64" ]; then
-            echo "$SIGNING_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > "$RUNNER_TEMP/release-keystore.p12"
-            echo "keystore_path=$RUNNER_TEMP/release-keystore.p12" >> "$GITHUB_OUTPUT"
-            echo "Release signing keystore configured."
+            python3 - <<'PY'
+          import base64, os, re
+          raw = os.environ.get("SIGNING_KEYSTORE_BASE64", "")
+          raw = re.sub(r"^SIGNING_KEYSTORE_BASE64\s*=?\s*", "", raw.strip())
+          cleaned = re.sub(r"[^A-Za-z0-9+/=]", "", raw)
+          rem = len(cleaned) % 4
+          if rem:
+              cleaned += "=" * (4 - rem)
+          try:
+              data = base64.b64decode(cleaned)
+          except Exception as exc:
+              print(f"::warning::Failed to decode SIGNING_KEYSTORE_BASE64 ({exc}); falling back to debug signing.")
+              data = b""
+          out_path = os.path.join(os.environ["RUNNER_TEMP"], "release-keystore.p12")
+          if len(data) >= 200 and data[0] == 0x30:
+              with open(out_path, "wb") as f:
+                  f.write(data)
+              with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+                  out.write(f"keystore_path={out_path}\n")
+              print(f"Release signing keystore decoded ({len(data)} bytes).")
+          else:
+              print(f"::warning::Decoded SIGNING_KEYSTORE_BASE64 invalid ({len(data)} bytes); falling back to debug signing.")
+          PY
           else
             echo "No SIGNING_KEYSTORE_BASE64 secret configured; using fallback debug signing."
           fi
