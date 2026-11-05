@@ -48,10 +48,11 @@ data class KtepsTelemetry(
     val activeRangeKm: Int?
         get() = when (assistMode) {
             null -> null
+            AssistMode.OFF -> 0
             AssistMode.ECO -> rangeEcoKm
             AssistMode.TRAIL -> rangeTrailKm
             AssistMode.BOOST -> rangeBoostKm
-            else -> rangeEcoKm
+            AssistMode.WALK, AssistMode.WALK_ACTIVE -> 0
         }
 }
 

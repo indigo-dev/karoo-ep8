@@ -1,6 +1,7 @@
 package io.github.indigodev.kteps
 
 import android.content.Context
+import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
 import io.hammerhead.karooext.extension.DataTypeImpl
@@ -21,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -40,7 +42,7 @@ private data class BatteryBarViewState(
  * Suppresses re-sending unchanged values to Karoo. A value is sent when it differs from the last
  * sent value or when [refreshIntervalMs] has elapsed, so Karoo still gets a regular refresh.
  */
-private class DataPointDeduplicator(
+internal class DataPointDeduplicator(
     private val refreshIntervalMs: Long = 5_000L
 ) {
     private val lastSent = mutableMapOf<String, Pair<Double, Long>>()
@@ -53,6 +55,10 @@ private class DataPointDeduplicator(
         }
         lastSent[key] = value to now
         return true
+    }
+
+    fun invalidate(key: String) {
+        lastSent.remove(key)
     }
 
     fun reset() {
@@ -142,6 +148,7 @@ class KtepsBatteryBarDataType(
 class KtepsExtension : KarooExtension("kteps", BuildConfig.VERSION_NAME) {
 
     companion object {
+        private const val TAG = "KtepsExtension"
         private const val UID_PREFIX = "kteps-"
         private const val BATTERY_STATUS_KEY = "battery-status"
     }
@@ -216,6 +223,7 @@ class KtepsExtension : KarooExtension("kteps", BuildConfig.VERSION_NAME) {
 
         val job = scope.launch {
             var wasConnected = false
+            var lastAssistMode: AssistMode? = null
             val dedup = DataPointDeduplicator()
 
             fun sendIfChanged(dataTypeId: String, field: String, value: Double) {
@@ -224,14 +232,16 @@ class KtepsExtension : KarooExtension("kteps", BuildConfig.VERSION_NAME) {
                 }
             }
 
-            ktepsManager.telemetry.collectLatest { state ->
+            ktepsManager.telemetry.collect { state ->
                 if (state.connected && !wasConnected) {
                     wasConnected = true
                     // Fresh connection: make sure Karoo receives every value again.
                     dedup.reset()
+                    lastAssistMode = null
                     emitter.onNext(OnConnectionStatus(ConnectionStatus.CONNECTED))
                 } else if (!state.connected && wasConnected) {
                     wasConnected = false
+                    lastAssistMode = null
                     emitter.onNext(OnConnectionStatus(ConnectionStatus.SEARCHING))
                 }
 
@@ -258,8 +268,19 @@ class KtepsExtension : KarooExtension("kteps", BuildConfig.VERSION_NAME) {
                         sendIfChanged(dtBatteryBar, DataType.Field.SINGLE, batteryVal)
                     }
 
-                    state.assistMode?.let { mode ->
-                        sendIfChanged(dtMode, DataType.Field.SINGLE, mode.code.toDouble())
+                    val mode = state.assistMode
+                    val modeChanged = mode != null && mode != lastAssistMode
+                    if (modeChanged) {
+                        lastAssistMode = mode
+                        // Assist mode changed: invalidate range deduplication so that the range for
+                        // the newly active mode is immediately emitted to Karoo, even if the numeric km
+                        // happens to match the previous mode's km value.
+                        dedup.invalidate(dtRange)
+                        Log.d(TAG, "Assist mode switched to ${mode?.label}, invalidated range dedup")
+                    }
+
+                    mode?.let {
+                        sendIfChanged(dtMode, DataType.Field.SINGLE, it.code.toDouble())
                     }
                     state.activeRangeKm?.let { rangeKm ->
                         sendIfChanged(dtRange, DataType.Field.SINGLE, rangeKm.toDouble())

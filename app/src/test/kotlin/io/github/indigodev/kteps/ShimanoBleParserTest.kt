@@ -141,6 +141,40 @@ class ShimanoBleParserTest {
 
         // Once the assist mode is known, the matching range becomes active
         assertEquals(42, withRanges.copy(assistMode = AssistMode.BOOST).activeRangeKm)
+        assertEquals(68, withRanges.copy(assistMode = AssistMode.TRAIL).activeRangeKm)
+        assertEquals(112, withRanges.copy(assistMode = AssistMode.ECO).activeRangeKm)
+        assertEquals(0, withRanges.copy(assistMode = AssistMode.OFF).activeRangeKm)
+        assertEquals(0, withRanges.copy(assistMode = AssistMode.WALK).activeRangeKm)
+        assertEquals(0, withRanges.copy(assistMode = AssistMode.WALK_ACTIVE).activeRangeKm)
+    }
+
+    @Test
+    fun `DataPointDeduplicator suppresses duplicates and respects invalidate and change`() {
+        val dedup = DataPointDeduplicator(refreshIntervalMs = 5_000L)
+        val key = "kteps-range"
+
+        // First emission always succeeds
+        assertTrue(dedup.shouldSend(key, 50.0))
+
+        // Immediate duplicate suppressed
+        assertFalse(dedup.shouldSend(key, 50.0))
+
+        // Value change succeeds
+        assertTrue(dedup.shouldSend(key, 35.0))
+
+        // Duplicate of new value suppressed
+        assertFalse(dedup.shouldSend(key, 35.0))
+
+        // Invalidation (e.g. on mode switch) forces next emission even with identical value
+        dedup.invalidate(key)
+        assertTrue(dedup.shouldSend(key, 35.0))
+
+        // Another immediate duplicate suppressed
+        assertFalse(dedup.shouldSend(key, 35.0))
+
+        // Reset clears all cache
+        dedup.reset()
+        assertTrue(dedup.shouldSend(key, 35.0))
     }
 
     @Test
