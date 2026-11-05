@@ -42,6 +42,9 @@ class KtepsManager(
         private const val DISCONNECT_GRACE_MS = 5_000L
         private const val SERVICE_DISCOVERY_DELAY_MS = 250L
 
+        /** Max time from connectGatt() until STATE_CONNECTED before aborting the attempt. */
+        private const val CONNECT_TIMEOUT_MS = 8_000L
+
         /** Max time from STATE_CONNECTED until telemetry notifications are confirmed. */
         private const val HANDSHAKE_TIMEOUT_MS = 15_000L
 
@@ -75,11 +78,15 @@ class KtepsManager(
     private var disconnectGraceJob: Job? = null
     private var serviceDiscoveryJob: Job? = null
     private var handshakeWatchdogJob: Job? = null
+    private var connectTimeoutJob: Job? = null
     private var batteryPollJob: Job? = null
     private var handshakeStage = HandshakeStage.IDLE
     private var activeScanCallback: ScanCallback? = null
     private var nextToken = 1L
     private val activeTokens = mutableSetOf<Long>()
+
+    private fun isGattConnectedLocked(): Boolean =
+        handshakeStage != HandshakeStage.IDLE && handshakeStage != HandshakeStage.CONNECTING
 
     @Volatile
     private var sessionStartOdoMeters: Long? = null
@@ -324,7 +331,7 @@ class KtepsManager(
                 targetMacAddress = macAddress
                 reconnectJob?.cancel()
                 reconnectJob = null
-                closeGattLocked()
+                closeGattLocked(disconnectFirst = isGattConnectedLocked())
                 shouldOpenNewGatt = true
             }
         }
@@ -369,7 +376,7 @@ class KtepsManager(
         targetMacAddress = null
         reconnectJob?.cancel()
         reconnectJob = null
-        closeGattLocked()
+        closeGattLocked(disconnectFirst = isGattConnectedLocked())
         sessionStartOdoMeters = null
         _telemetry.value = KtepsTelemetry(connected = false)
         releaseBleAppRegistrationLocked()
@@ -433,15 +440,42 @@ class KtepsManager(
                 }
                 bluetoothGatt = gatt
                 handshakeStage = HandshakeStage.CONNECTING
+                startConnectWatchdogLocked(gatt, macAddress)
             }
         } catch (e: SecurityException) {
             Log.e(TAG, "SecurityException connecting to $macAddress", e)
             ExtensionDiagnostics.onError("SecurityException: ${e.message}")
+            synchronized(gattLock) {
+                closeGattLocked(disconnectFirst = false)
+            }
             scheduleReconnect(macAddress, RECONNECT_DELAY_MS)
         } catch (e: Exception) {
             Log.e(TAG, "Error connecting to $macAddress", e)
             ExtensionDiagnostics.onError("Connect error: ${e.message}")
+            synchronized(gattLock) {
+                closeGattLocked(disconnectFirst = false)
+            }
             scheduleReconnect(macAddress, RECONNECT_DELAY_MS)
+        }
+    }
+
+    private fun startConnectWatchdogLocked(gatt: BluetoothGatt, macAddress: String) {
+        connectTimeoutJob?.cancel()
+        connectTimeoutJob = scope.launch {
+            delay(CONNECT_TIMEOUT_MS)
+            val timedOut = synchronized(gattLock) {
+                gatt === bluetoothGatt && handshakeStage == HandshakeStage.CONNECTING
+            }
+            if (timedOut) {
+                Log.w(TAG, "Connection attempt to $macAddress timed out after ${CONNECT_TIMEOUT_MS}ms")
+                ExtensionDiagnostics.onGattEvent("connectTimeout")
+                synchronized(gattLock) {
+                    if (gatt === bluetoothGatt) {
+                        closeGattLocked(disconnectFirst = false)
+                    }
+                }
+                scheduleReconnect(macAddress, RECONNECT_DELAY_MS)
+            }
         }
     }
 
@@ -462,7 +496,9 @@ class KtepsManager(
     }
 
     @SuppressLint("MissingPermission")
-    private fun closeGattLocked() {
+    private fun closeGattLocked(disconnectFirst: Boolean = false) {
+        connectTimeoutJob?.cancel()
+        connectTimeoutJob = null
         serviceDiscoveryJob?.cancel()
         serviceDiscoveryJob = null
         handshakeWatchdogJob?.cancel()
@@ -472,9 +508,11 @@ class KtepsManager(
         handshakeStage = HandshakeStage.IDLE
         val gatt = bluetoothGatt ?: return
         bluetoothGatt = null
-        try {
-            gatt.disconnect()
-        } catch (_: Exception) {
+        if (disconnectFirst) {
+            try {
+                gatt.disconnect()
+            } catch (_: Exception) {
+            }
         }
         try {
             gatt.close()
@@ -501,7 +539,7 @@ class KtepsManager(
             if (refreshCache) {
                 refreshGattCache(gatt)
             }
-            closeGattLocked()
+            closeGattLocked(disconnectFirst = true)
             _telemetry.update {
                 it.copy(
                     connected = false,
@@ -567,6 +605,8 @@ class KtepsManager(
                     }
                     return
                 }
+                connectTimeoutJob?.cancel()
+                connectTimeoutJob = null
                 targetMacAddress
             }
 
@@ -601,7 +641,7 @@ class KtepsManager(
                 ExtensionDiagnostics.onGattDisconnected(status)
                 synchronized(gattLock) {
                     if (bluetoothGatt === gatt) {
-                        closeGattLocked()
+                        closeGattLocked(disconnectFirst = false)
                     } else {
                         try {
                             gatt.close()

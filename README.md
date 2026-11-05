@@ -6,6 +6,18 @@ Because the wireless interface broadcasts e-bike telemetry (assist mode, battery
 
 ---
 
+## 📸 Screenshots
+
+| App / Setup | Sensor Search | Pairing | Sensor Details |
+| :---: | :---: | :---: | :---: |
+| <img src="screenshots/0_extension_screen.png" width="180" alt="Kteps Status" /> | <img src="screenshots/01_sensor_search.png" width="180" alt="Sensor Search" /> | <img src="screenshots/02_pairing.png" width="180" alt="Pairing" /> | <img src="screenshots/03_sensor_details.png" width="180" alt="Sensor Details" /> |
+
+| Connected Sensor | Data Fields | In Action |
+| :---: | :---: | :---: |
+| <img src="screenshots/04_sensor_connected.png" width="180" alt="Sensor Connected" /> | <img src="screenshots/05_data_fields.png" width="180" alt="Data Fields" /> | <img src="screenshots/06_have_fun.png" width="180" alt="Ride Screen" /> |
+
+---
+
 ## ✨ Features
 
 * **Direct BLE Pairing in the Karoo Sensor Menu:** Discovers compatible e-bikes directly under *Sensors -> `+` -> Search*.
