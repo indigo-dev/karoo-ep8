@@ -1,4 +1,4 @@
-# 🚴‍♂️ Kteps – 🇯🇵 E-Bike Telemetry Extension for Hammerhead Karoo
+# 🚴‍♂️ Kteps – <img src="screenshots/flag_jp.png" width="24" height="16" alt="Japan" valign="middle" /> E-Bike Telemetry Extension for Hammerhead Karoo
 
 A native **Karoo Extension (`karoo-ext`)** for the **Hammerhead Karoo** (Karoo 2 & Karoo 3) that connects to **Shimano STEPS e-bike systems** (e.g., **EP8, EP801, EP6, E8000, E7000**) directly via Bluetooth LE (such as the **EW-EN100** wireless unit) — no external hardware bridges required.
 
