@@ -1,4 +1,4 @@
-name: Build Karoo EP8 APK
+name: Build Kteps APK
 
 on:
   push:
