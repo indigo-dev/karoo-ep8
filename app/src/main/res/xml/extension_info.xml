@@ -1,60 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ExtensionInfo
-    id="shimano-ep8"
+    id="kteps"
     displayName="@string/extension_name"
     icon="@mipmap/ic_launcher"
     scansDevices="true">
 
     <DataType
-        typeId="ep8-mode"
+        typeId="kteps-mode"
         displayName="@string/dt_mode_name"
         description="@string/dt_mode_desc"
         graphical="true" />
 
     <DataType
-        typeId="ep8-range"
+        typeId="kteps-range"
         displayName="@string/dt_range_name"
         description="@string/dt_range_desc"
         graphical="false" />
 
     <DataType
-        typeId="ep8-battery"
+        typeId="kteps-battery"
         displayName="@string/dt_battery_name"
         description="@string/dt_battery_desc"
         graphical="false" />
 
     <DataType
-        typeId="ep8-battery-bar"
+        typeId="kteps-battery-bar"
         displayName="@string/dt_battery_bar_name"
         description="@string/dt_battery_bar_desc"
         graphical="true" />
 
     <DataType
-        typeId="ep8-power"
+        typeId="kteps-power"
         displayName="@string/dt_power_name"
         description="@string/dt_power_desc"
         graphical="false" />
 
     <DataType
-        typeId="ep8-cadence"
+        typeId="kteps-cadence"
         displayName="@string/dt_cadence_name"
         description="@string/dt_cadence_desc"
         graphical="false" />
 
     <DataType
-        typeId="ep8-speed"
+        typeId="kteps-speed"
         displayName="@string/dt_speed_name"
         description="@string/dt_speed_desc"
         graphical="false" />
 
     <DataType
-        typeId="ep8-trip"
+        typeId="kteps-trip"
         displayName="@string/dt_trip_name"
         description="@string/dt_trip_desc"
         graphical="false" />
 
     <DataType
-        typeId="ep8-odometer"
+        typeId="kteps-odometer"
         displayName="@string/dt_odometer_name"
         description="@string/dt_odometer_desc"
         graphical="false" />

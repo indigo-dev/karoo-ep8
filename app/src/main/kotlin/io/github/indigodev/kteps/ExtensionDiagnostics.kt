@@ -1,4 +1,4 @@
-package io.github.indigodev.karooep8
+package io.github.indigodev.kteps
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

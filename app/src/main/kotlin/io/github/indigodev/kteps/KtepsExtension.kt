@@ -1,4 +1,4 @@
-package io.github.indigodev.karooep8
+package io.github.indigodev.kteps
 
 import android.content.Context
 import android.view.View
@@ -60,19 +60,19 @@ private class DataPointDeduplicator(
     }
 }
 
-class Ep8ModeDataType(
+class KtepsModeDataType(
     extension: String,
-    private val ep8Manager: ShimanoEp8Manager,
+    private val ktepsManager: KtepsManager,
     private val scope: CoroutineScope
-) : DataTypeImpl(extension, "ep8-mode") {
+) : DataTypeImpl(extension, "kteps-mode") {
 
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         val job = scope.launch {
-            ep8Manager.telemetry
+            ktepsManager.telemetry
                 .map { ModeViewState(it.connected, it.assistMode) }
                 .distinctUntilChanged()
                 .collectLatest { state ->
-                    val views = RemoteViews(context.packageName, R.layout.ep8_mode_view)
+                    val views = RemoteViews(context.packageName, R.layout.kteps_mode_view)
 
                     val mode = state.assistMode
                     val (modeText, dotColor) = if (!state.connected || mode == null) {
@@ -81,9 +81,9 @@ class Ep8ModeDataType(
                         mode.label to mode.dotColorArgb
                     }
 
-                    views.setTextViewText(R.id.ep8_mode_dot, "●")
-                    views.setTextColor(R.id.ep8_mode_dot, dotColor)
-                    views.setTextViewText(R.id.ep8_mode_text, modeText)
+                    views.setTextViewText(R.id.kteps_mode_dot, "●")
+                    views.setTextColor(R.id.kteps_mode_dot, dotColor)
+                    views.setTextViewText(R.id.kteps_mode_text, modeText)
 
                     emitter.updateView(views)
                 }
@@ -92,33 +92,33 @@ class Ep8ModeDataType(
     }
 }
 
-class Ep8BatteryBarDataType(
+class KtepsBatteryBarDataType(
     extension: String,
-    private val ep8Manager: ShimanoEp8Manager,
+    private val ktepsManager: KtepsManager,
     private val scope: CoroutineScope
-) : DataTypeImpl(extension, "ep8-battery-bar") {
+) : DataTypeImpl(extension, "kteps-battery-bar") {
 
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         // Karoo uses a 60-column grid: 60 = full width, 30 = half width
         val isFullWidth = config.gridSize.first >= 50
 
         val job = scope.launch {
-            ep8Manager.telemetry
+            ktepsManager.telemetry
                 .map { BatteryBarViewState(it.connected, it.batteryPercent?.coerceIn(0, 100)) }
                 .distinctUntilChanged()
                 .collectLatest { state ->
-                    val views = RemoteViews(context.packageName, R.layout.ep8_battery_view)
+                    val views = RemoteViews(context.packageName, R.layout.kteps_battery_view)
                     val knownLevel = state.batteryPercent.takeIf { state.connected }
                     val level = knownLevel ?: 0
 
-                    views.setViewVisibility(R.id.ep8_bar_green, View.GONE)
-                    views.setViewVisibility(R.id.ep8_bar_yellow, View.GONE)
-                    views.setViewVisibility(R.id.ep8_bar_red, View.GONE)
+                    views.setViewVisibility(R.id.kteps_bar_green, View.GONE)
+                    views.setViewVisibility(R.id.kteps_bar_yellow, View.GONE)
+                    views.setViewVisibility(R.id.kteps_bar_red, View.GONE)
 
                     val activeBarId = when {
-                        level > 50 -> R.id.ep8_bar_green
-                        level > 20 -> R.id.ep8_bar_yellow
-                        else -> R.id.ep8_bar_red
+                        level > 50 -> R.id.kteps_bar_green
+                        level > 20 -> R.id.kteps_bar_yellow
+                        else -> R.id.kteps_bar_red
                     }
 
                     views.setViewVisibility(activeBarId, View.VISIBLE)
@@ -126,10 +126,10 @@ class Ep8BatteryBarDataType(
 
                     if (isFullWidth) {
                         val label = if (knownLevel != null) "$knownLevel %" else "-- %"
-                        views.setTextViewText(R.id.ep8_battery_text, label)
-                        views.setViewVisibility(R.id.ep8_battery_text, View.VISIBLE)
+                        views.setTextViewText(R.id.kteps_battery_text, label)
+                        views.setViewVisibility(R.id.kteps_battery_text, View.VISIBLE)
                     } else {
-                        views.setViewVisibility(R.id.ep8_battery_text, View.GONE)
+                        views.setViewVisibility(R.id.kteps_battery_text, View.GONE)
                     }
 
                     emitter.updateView(views)
@@ -139,10 +139,10 @@ class Ep8BatteryBarDataType(
     }
 }
 
-class ShimanoEp8Extension : KarooExtension("shimano-ep8", BuildConfig.VERSION_NAME) {
+class KtepsExtension : KarooExtension("kteps", BuildConfig.VERSION_NAME) {
 
     companion object {
-        private const val UID_PREFIX = "ep8-"
+        private const val UID_PREFIX = "kteps-"
         private const val BATTERY_STATUS_KEY = "battery-status"
     }
 
@@ -152,17 +152,17 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", BuildConfig.VERSION_NA
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val ep8Manager by lazy { ShimanoEp8Manager(applicationContext, scope) }
+    private val ktepsManager by lazy { KtepsManager(applicationContext, scope) }
 
-    private val dtMode by lazy { DataType.dataTypeId(extension, "ep8-mode") }
-    private val dtRange by lazy { DataType.dataTypeId(extension, "ep8-range") }
-    private val dtBattery by lazy { DataType.dataTypeId(extension, "ep8-battery") }
-    private val dtBatteryBar by lazy { DataType.dataTypeId(extension, "ep8-battery-bar") }
-    private val dtPower by lazy { DataType.dataTypeId(extension, "ep8-power") }
-    private val dtCadence by lazy { DataType.dataTypeId(extension, "ep8-cadence") }
-    private val dtSpeed by lazy { DataType.dataTypeId(extension, "ep8-speed") }
-    private val dtTrip by lazy { DataType.dataTypeId(extension, "ep8-trip") }
-    private val dtOdometer by lazy { DataType.dataTypeId(extension, "ep8-odometer") }
+    private val dtMode by lazy { DataType.dataTypeId(extension, "kteps-mode") }
+    private val dtRange by lazy { DataType.dataTypeId(extension, "kteps-range") }
+    private val dtBattery by lazy { DataType.dataTypeId(extension, "kteps-battery") }
+    private val dtBatteryBar by lazy { DataType.dataTypeId(extension, "kteps-battery-bar") }
+    private val dtPower by lazy { DataType.dataTypeId(extension, "kteps-power") }
+    private val dtCadence by lazy { DataType.dataTypeId(extension, "kteps-cadence") }
+    private val dtSpeed by lazy { DataType.dataTypeId(extension, "kteps-speed") }
+    private val dtTrip by lazy { DataType.dataTypeId(extension, "kteps-trip") }
+    private val dtOdometer by lazy { DataType.dataTypeId(extension, "kteps-odometer") }
 
     private val supportedDataTypes by lazy {
         listOf(
@@ -184,15 +184,15 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", BuildConfig.VERSION_NA
 
     override val types: List<DataTypeImpl> by lazy {
         listOf(
-            Ep8ModeDataType(extension, ep8Manager, scope),
-            Ep8BatteryBarDataType(extension, ep8Manager, scope)
+            KtepsModeDataType(extension, ktepsManager, scope),
+            KtepsBatteryBarDataType(extension, ktepsManager, scope)
         )
     }
 
     override fun startScan(emitter: Emitter<Device>) {
         ExtensionDiagnostics.onKarooScanStarted()
         val job = scope.launch {
-            ep8Manager.scanForShimanoBikes().collect { bike ->
+            ktepsManager.scanForShimanoBikes().collect { bike ->
                 emitter.onNext(
                     Device(
                         extension = extension,
@@ -212,7 +212,7 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", BuildConfig.VERSION_NA
     override fun connectDevice(uid: String, emitter: Emitter<DeviceEvent>) {
         ExtensionDiagnostics.onConnectRequested(uid)
         val macAddress = uid.removePrefix(UID_PREFIX)
-        val connectionToken = ep8Manager.acquireConnection(macAddress)
+        val connectionToken = ktepsManager.acquireConnection(macAddress)
 
         val job = scope.launch {
             var wasConnected = false
@@ -224,7 +224,7 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", BuildConfig.VERSION_NA
                 }
             }
 
-            ep8Manager.telemetry.collectLatest { state ->
+            ktepsManager.telemetry.collectLatest { state ->
                 if (state.connected && !wasConnected) {
                     wasConnected = true
                     // Fresh connection: make sure Karoo receives every value again.
@@ -289,7 +289,7 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", BuildConfig.VERSION_NA
 
         emitter.setCancellable {
             job.cancel()
-            ep8Manager.releaseConnection(connectionToken)
+            ktepsManager.releaseConnection(connectionToken)
         }
     }
 
@@ -305,7 +305,7 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", BuildConfig.VERSION_NA
     }
 
     override fun onDestroy() {
-        ep8Manager.disconnect()
+        ktepsManager.disconnect()
         scope.cancel()
         super.onDestroy()
     }

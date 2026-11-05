@@ -1,4 +1,4 @@
-package io.github.indigodev.karooep8
+package io.github.indigodev.kteps
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,7 +33,7 @@ class ShimanoBleParserTest {
 
         val result = ShimanoBleParser.parseTelemetryPacket(
             bytes = packet,
-            current = Ep8Telemetry(connected = true),
+            current = KtepsTelemetry(connected = true),
             sessionStartOdoMeters = null
         )
 
@@ -56,7 +56,7 @@ class ShimanoBleParserTest {
 
         val result = ShimanoBleParser.parseTelemetryPacket(
             bytes = packet,
-            current = Ep8Telemetry(connected = true, speedKmh = 18.2, riderPowerWatts = 150, cadenceRpm = 75),
+            current = KtepsTelemetry(connected = true, speedKmh = 18.2, riderPowerWatts = 150, cadenceRpm = 75),
             sessionStartOdoMeters = 10_000L
         )
 
@@ -84,7 +84,7 @@ class ShimanoBleParserTest {
 
         val firstResult = ShimanoBleParser.parseTelemetryPacket(
             bytes = firstPacket,
-            current = Ep8Telemetry(connected = true, assistMode = AssistMode.TRAIL),
+            current = KtepsTelemetry(connected = true, assistMode = AssistMode.TRAIL),
             sessionStartOdoMeters = null
         )
 
@@ -119,7 +119,7 @@ class ShimanoBleParserTest {
 
     @Test
     fun `fresh telemetry reports unknown values instead of zero`() {
-        val initial = Ep8Telemetry()
+        val initial = KtepsTelemetry()
 
         assertFalse(initial.connected)
         assertNull(initial.batteryPercent)
@@ -145,7 +145,7 @@ class ShimanoBleParserTest {
 
     @Test
     fun `parseTelemetryPacket ignores truncated packets safely`() {
-        val initial = Ep8Telemetry(connected = true, speedKmh = 21.5)
+        val initial = KtepsTelemetry(connected = true, speedKmh = 21.5)
         val short02 = byteArrayOf(0x02, 0x01, 0x10)
         val short03 = ByteArray(10).apply { this[0] = 0x03 }
 

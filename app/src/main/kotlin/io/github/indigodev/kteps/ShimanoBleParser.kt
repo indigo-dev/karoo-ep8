@@ -1,4 +1,4 @@
-package io.github.indigodev.karooep8
+package io.github.indigodev.kteps
 
 import java.util.UUID
 
@@ -26,7 +26,7 @@ object ShimanoBleParser {
     private const val SHIMANO_UUID_SUFFIX = "-5348-494d-414e-4f5f424c4500"
 
     data class TelemetryParseResult(
-        val telemetry: Ep8Telemetry,
+        val telemetry: KtepsTelemetry,
         val sessionStartOdoMeters: Long?
     )
 
@@ -58,7 +58,7 @@ object ShimanoBleParser {
 
     fun parseTelemetryPacket(
         bytes: ByteArray?,
-        current: Ep8Telemetry,
+        current: KtepsTelemetry,
         sessionStartOdoMeters: Long?
     ): TelemetryParseResult {
         if (bytes == null || bytes.isEmpty()) {

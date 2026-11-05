@@ -1,4 +1,4 @@
-package io.github.indigodev.karooep8
+package io.github.indigodev.kteps
 
 enum class AssistMode(
     val code: Int,
@@ -24,7 +24,7 @@ data class DiscoveredShimanoBike(
 )
 
 /**
- * Latest telemetry snapshot of the connected Shimano drive unit.
+ * Latest telemetry snapshot of the connected drive unit.
  *
  * [connected] is only `true` once the GATT handshake has completed (services discovered and
  * telemetry notifications enabled), i.e. when data can actually be expected.
@@ -32,7 +32,7 @@ data class DiscoveredShimanoBike(
  * Nullable values are `null` until the first valid value has been received from the bike,
  * so "unknown" is never confused with a real `0` (e.g. 0 % battery).
  */
-data class Ep8Telemetry(
+data class KtepsTelemetry(
     val connected: Boolean = false,
     val batteryPercent: Int? = null,
     val assistMode: AssistMode? = null,
@@ -54,3 +54,5 @@ data class Ep8Telemetry(
             else -> rangeEcoKm
         }
 }
+
+typealias Ep8Telemetry = KtepsTelemetry

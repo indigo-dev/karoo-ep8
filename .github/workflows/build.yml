@@ -71,17 +71,17 @@ jobs:
           KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
           ./gradlew testDebugUnitTest assembleRelease
-          cp app/build/outputs/apk/release/*.apk "$RUNNER_TEMP/karoo-ep8.apk"
+          cp app/build/outputs/apk/release/*.apk "$RUNNER_TEMP/kteps.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: karoo-ep8-apk
-          path: ${{ runner.temp }}/karoo-ep8.apk
+          name: kteps-apk
+          path: ${{ runner.temp }}/kteps.apk
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ runner.temp }}/karoo-ep8.apk
+          files: ${{ runner.temp }}/kteps.apk
           generate_release_notes: true

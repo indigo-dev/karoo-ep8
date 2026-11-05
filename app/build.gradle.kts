@@ -17,11 +17,11 @@ fun cleanSecretEnv(name: String): String? {
 }
 
 android {
-    namespace = "io.github.indigodev.karooep8"
+    namespace = "io.github.indigodev.kteps"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "io.github.indigodev.karooep8"
+        applicationId = "io.github.indigodev.kteps"
         minSdk = 23
         targetSdk = 34
         versionCode = 7

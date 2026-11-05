@@ -9,7 +9,7 @@
 
     <!-- Grüner Balken (> 50 %) -->
     <ProgressBar
-        android:id="@+id/ep8_bar_green"
+        android:id="@+id/kteps_bar_green"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="22dp"
@@ -23,7 +23,7 @@
 
     <!-- Gelber Balken (21 % bis 50 %) -->
     <ProgressBar
-        android:id="@+id/ep8_bar_yellow"
+        android:id="@+id/kteps_bar_yellow"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="22dp"
@@ -37,7 +37,7 @@
 
     <!-- Roter Balken (<= 20 %) -->
     <ProgressBar
-        android:id="@+id/ep8_bar_red"
+        android:id="@+id/kteps_bar_red"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="22dp"
@@ -51,7 +51,7 @@
 
     <!-- Dunkles Prozent-Badge unten links (nur bei voller Kachelbreite sichtbar) -->
     <TextView
-        android:id="@+id/ep8_battery_text"
+        android:id="@+id/kteps_battery_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
@@ -65,7 +65,7 @@
         android:paddingBottom="1dp"
         android:text="-- %"
         android:textColor="#FFFFFF"
-        android:textSize="15sp"
+        android:textSize="12sp"
         android:textStyle="bold"
         android:visibility="gone" />
 

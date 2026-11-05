@@ -1,4 +1,4 @@
-package io.github.indigodev.karooep8
+package io.github.indigodev.kteps
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
@@ -30,13 +30,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-class ShimanoEp8Manager(
+class KtepsManager(
     private val context: Context,
     private val scope: CoroutineScope
 ) {
 
     companion object {
-        private const val TAG = "KarooEP8"
+        private const val TAG = "Kteps"
         private const val RECONNECT_DELAY_MS = 3_000L
         private const val FAST_RECONNECT_DELAY_MS = 600L
         private const val DISCONNECT_GRACE_MS = 5_000L
@@ -65,8 +65,8 @@ class ShimanoEp8Manager(
 
     private enum class NotifyResult { WRITE_PENDING, NO_CCCD, FAILED }
 
-    private val _telemetry = MutableStateFlow(Ep8Telemetry())
-    val telemetry: StateFlow<Ep8Telemetry> = _telemetry.asStateFlow()
+    private val _telemetry = MutableStateFlow(KtepsTelemetry())
+    val telemetry: StateFlow<KtepsTelemetry> = _telemetry.asStateFlow()
 
     private val gattLock = Any()
     private var bluetoothGatt: BluetoothGatt? = null
@@ -371,7 +371,7 @@ class ShimanoEp8Manager(
         reconnectJob = null
         closeGattLocked()
         sessionStartOdoMeters = null
-        _telemetry.value = Ep8Telemetry(connected = false)
+        _telemetry.value = KtepsTelemetry(connected = false)
         releaseBleAppRegistrationLocked()
     }
 

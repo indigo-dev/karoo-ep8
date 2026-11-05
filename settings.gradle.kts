@@ -25,5 +25,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "karoo-ep8"
+rootProject.name = "kteps"
 include("app")

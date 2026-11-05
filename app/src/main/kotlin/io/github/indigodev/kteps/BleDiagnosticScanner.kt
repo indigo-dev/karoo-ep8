@@ -1,4 +1,4 @@
-package io.github.indigodev.karooep8
+package io.github.indigodev.kteps
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice

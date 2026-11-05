@@ -1,16 +1,12 @@
 <resources>
-    <string name="app_name">Shimano EP8</string>
-    <string name="extension_name">Shimano EP8 E-Bike</string>
+    <string name="app_name">Kteps</string>
+    <string name="extension_name">Kteps E-Bike</string>
 
     <string name="status_permissions_granted">Berechtigungen aktiv</string>
     <string name="status_permissions_missing">Berechtigungen erforderlich</string>
     <string name="setup_instructions_ready">E-Bike einschalten, um automatisch zu verbinden.\nZum erstmaligen Koppeln innerhalb von 15s unter Sensoren → \"+\" → Suchen auswählen.</string>
-    <string name="setup_instructions_grant">Bluetooth-Berechtigungen werden benötigt, um das Shimano E-Bike zu finden und zu verbinden.</string>
+    <string name="setup_instructions_grant">Bluetooth-Berechtigungen werden benötigt, um das E-Bike zu finden und zu verbinden.</string>
     <string name="btn_grant_permissions">Berechtigungen erteilen</string>
-
-    <string name="legacy_conflict_title">Alte App-Version erkannt</string>
-    <string name="legacy_conflict_desc">Das alte Template-Paket (io.hammerhead.karooexttemplate) ist noch installiert und stört die BLE-Verbindung.</string>
-    <string name="btn_uninstall_legacy">Alte Version deinstallieren</string>
 
     <string name="diag_section_title">Diagnose</string>
     <string name="diag_service_active">Karoo-Dienst: Aktiv</string>
@@ -25,25 +21,25 @@
     <string name="btn_stop_ble_scan">BLE-Scan stoppen</string>
     <string name="diag_scanning_now">Suche nach BLE-Geräten…</string>
     <string name="diag_ble_packets">Empfangene BLE-Pakete</string>
-    <string name="diag_shimano_found">Gefundene Shimano E-Bikes</string>
+    <string name="diag_shimano_found">Kompatible E-Bikes gefunden</string>
     <string name="diag_other_ble">Andere BLE-Geräte in Reichweite</string>
 
-    <string name="dt_mode_name">EP8 Modus</string>
+    <string name="dt_mode_name">Kteps Modus</string>
     <string name="dt_mode_desc">Unterstützungsstufe (OFF, ECO, TRAIL, BOOST, WALK)</string>
-    <string name="dt_range_name">EP8 Reichweite</string>
+    <string name="dt_range_name">Kteps Reichweite</string>
     <string name="dt_range_desc">Restreichweite im aktiven Modus in km</string>
-    <string name="dt_battery_name">EP8 Akku</string>
+    <string name="dt_battery_name">Kteps Akku</string>
     <string name="dt_battery_desc">Akkuladestand in Prozent (Numerisch)</string>
-    <string name="dt_battery_bar_name">EP8 Akku Balken</string>
+    <string name="dt_battery_bar_name">Kteps Akku Balken</string>
     <string name="dt_battery_bar_desc">Akkuladestand als Balken (Visuell)</string>
-    <string name="dt_power_name">EP8 Leistung</string>
+    <string name="dt_power_name">Kteps Leistung</string>
     <string name="dt_power_desc">Fahrer-Trittleistung in Watt</string>
-    <string name="dt_cadence_name">EP8 Kadenz</string>
+    <string name="dt_cadence_name">Kteps Kadenz</string>
     <string name="dt_cadence_desc">Trittfrequenz in RPM</string>
-    <string name="dt_speed_name">EP8 Tempo</string>
+    <string name="dt_speed_name">Kteps Tempo</string>
     <string name="dt_speed_desc">E-Bike Geschwindigkeit in km/h</string>
-    <string name="dt_trip_name">EP8 Trip-km</string>
+    <string name="dt_trip_name">Kteps Trip-km</string>
     <string name="dt_trip_desc">Tagesstrecke in km</string>
-    <string name="dt_odometer_name">EP8 Gesamt-km</string>
+    <string name="dt_odometer_name">Kteps Gesamt-km</string>
     <string name="dt_odometer_desc">Gesamtlaufleistung (Odometer)</string>
 </resources>
