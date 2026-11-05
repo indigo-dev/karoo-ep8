@@ -1,5 +1,7 @@
 package io.github.indigodev.kteps
 
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -61,7 +63,16 @@ class MainActivity : ComponentActivity() {
             requestBlePermissions()
         }
 
-        val versionLabel = "v${BuildConfig.VERSION_NAME}"
+        val versionName = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0)).versionName
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, 0).versionName
+            }
+        }.getOrNull()?.takeIf { it.isNotBlank() } ?: BuildConfig.VERSION_NAME
+
+        val versionLabel = "v$versionName"
 
         setContent {
             val extDiag by ExtensionDiagnostics.state.collectAsState()

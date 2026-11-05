@@ -25,7 +25,7 @@ android {
         minSdk = 23
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0.0"
+        versionName = libs.versions.app.get()
     }
 
     val keystoreFile = System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotBlank() }?.let(::file)
