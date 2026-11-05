@@ -46,7 +46,7 @@ class ShimanoEp8Manager(
         private const val HANDSHAKE_TIMEOUT_MS = 15_000L
 
         /** Fallback battery re-read interval in case Battery Level notifications are not sent. */
-        private const val BATTERY_POLL_INTERVAL_MS = 60_000L
+        private const val BATTERY_POLL_INTERVAL_MS = 10_000L
 
         /** GATT_ERROR as reported by many stacks when the peer is out of range / switched off. */
         private const val GATT_STATUS_GENERIC_ERROR = 255
@@ -134,13 +134,22 @@ class ShimanoEp8Manager(
             return BleAvailability.READY
         }
 
-        // Deliberately no adapter.enable() fallback: a full STATE_ON without registered clients
-        // makes Hammerhead's BluetoothCoordinator disable Bluetooth again, causing an on/off loop.
-        Log.i(TAG, "Bluetooth LE not enabled (enableBLE=$enableBleResult)")
-        ExtensionDiagnostics.onGattEvent("enableBLE($enableBleResult)")
         if (enableBleResult) {
+            Log.i(TAG, "Bluetooth LE enabling via enableBLE()")
+            ExtensionDiagnostics.onGattEvent("enableBLE(true)")
             return BleAvailability.ENABLING
         }
+
+        // Fallback when ble_scan_always_enabled is not set on the device: re-enable the adapter
+        // after SensorSearchActivity's release of axs_connect turned Bluetooth off.
+        @Suppress("DEPRECATION")
+        val enableResult = runCatching { adapter.enable() }.getOrDefault(false)
+        Log.i(TAG, "Bluetooth LE not enabled (enableBLE=false, adapter.enable=$enableResult)")
+        ExtensionDiagnostics.onGattEvent("enable($enableResult)")
+        if (enableResult) {
+            return BleAvailability.ENABLING
+        }
+
         val reason = if (!isBleScanAlwaysAvailable()) {
             "Bluetooth off - enable 'Bluetooth scanning' in location settings"
         } else {
@@ -708,6 +717,11 @@ class ShimanoEp8Manager(
             value: ByteArray
         ) {
             if (!isActiveGatt(gatt)) return
+            if (characteristic.uuid == ShimanoBleParser.CHAR_SHIMANO_TELEMETRY &&
+                currentHandshakeStage(gatt) != HandshakeStage.READY
+            ) {
+                completeHandshake(gatt)
+            }
             handleCharacteristicData(characteristic.uuid, value)
         }
 
@@ -718,6 +732,11 @@ class ShimanoEp8Manager(
         ) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                 if (!isActiveGatt(gatt)) return
+                if (characteristic.uuid == ShimanoBleParser.CHAR_SHIMANO_TELEMETRY &&
+                    currentHandshakeStage(gatt) != HandshakeStage.READY
+                ) {
+                    completeHandshake(gatt)
+                }
                 handleCharacteristicData(characteristic.uuid, characteristic.value)
             }
         }
@@ -782,32 +801,25 @@ class ShimanoEp8Manager(
         }
     }
 
-    /** Telemetry notifications are active; additionally subscribe to battery updates if possible. */
+    /** Telemetry notifications are active; complete the handshake immediately. */
     private fun onTelemetrySubscribed(gatt: BluetoothGatt) {
-        val batteryChar = findBatteryCharacteristic(gatt)
-        val supportsNotify = batteryChar != null &&
-            (batteryChar.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0
-        if (batteryChar != null && supportsNotify &&
-            setHandshakeStage(gatt, HandshakeStage.SUBSCRIBING_BATTERY)
-        ) {
-            if (enableNotifications(gatt, batteryChar) == NotifyResult.WRITE_PENDING) {
-                return // continues in onDescriptorWrite
-            }
-        }
         completeHandshake(gatt)
     }
 
     private fun completeHandshake(gatt: BluetoothGatt) {
-        synchronized(gattLock) {
-            if (gatt !== bluetoothGatt) return
+        val newlyCompleted = synchronized(gattLock) {
+            if (gatt !== bluetoothGatt || handshakeStage == HandshakeStage.READY) return
             handshakeStage = HandshakeStage.READY
             handshakeWatchdogJob?.cancel()
             handshakeWatchdogJob = null
             startBatteryPollLocked(gatt)
             _telemetry.update { it.copy(connected = true) }
+            true
         }
-        Log.i(TAG, "GATT handshake complete, telemetry active")
-        ExtensionDiagnostics.onGattEvent("ready")
+        if (newlyCompleted) {
+            Log.i(TAG, "GATT handshake complete, telemetry active")
+            ExtensionDiagnostics.onGattEvent("ready")
+        }
     }
 
     /**
