@@ -28,13 +28,37 @@ import kotlinx.coroutines.launch
 
 private data class ModeViewState(
     val connected: Boolean,
-    val assistMode: AssistMode
+    val assistMode: AssistMode?
 )
 
 private data class BatteryBarViewState(
     val connected: Boolean,
-    val batteryPercent: Int
+    val batteryPercent: Int?
 )
+
+/**
+ * Suppresses re-sending unchanged values to Karoo. A value is sent when it differs from the last
+ * sent value or when [refreshIntervalMs] has elapsed, so Karoo still gets a regular refresh.
+ */
+private class DataPointDeduplicator(
+    private val refreshIntervalMs: Long = 5_000L
+) {
+    private val lastSent = mutableMapOf<String, Pair<Double, Long>>()
+
+    fun shouldSend(key: String, value: Double): Boolean {
+        val now = System.currentTimeMillis()
+        val previous = lastSent[key]
+        if (previous != null && previous.first == value && now - previous.second < refreshIntervalMs) {
+            return false
+        }
+        lastSent[key] = value to now
+        return true
+    }
+
+    fun reset() {
+        lastSent.clear()
+    }
+}
 
 class Ep8ModeDataType(
     extension: String,
@@ -50,10 +74,11 @@ class Ep8ModeDataType(
                 .collectLatest { state ->
                     val views = RemoteViews(context.packageName, R.layout.ep8_mode_view)
 
-                    val (modeText, dotColor) = if (!state.connected) {
+                    val mode = state.assistMode
+                    val (modeText, dotColor) = if (!state.connected || mode == null) {
                         "--" to AssistMode.OFF.dotColorArgb
                     } else {
-                        state.assistMode.label to state.assistMode.dotColorArgb
+                        mode.label to mode.dotColorArgb
                     }
 
                     views.setTextViewText(R.id.ep8_mode_dot, "●")
@@ -79,11 +104,12 @@ class Ep8BatteryBarDataType(
 
         val job = scope.launch {
             ep8Manager.telemetry
-                .map { BatteryBarViewState(it.connected, it.batteryPercent.coerceIn(0, 100)) }
+                .map { BatteryBarViewState(it.connected, it.batteryPercent?.coerceIn(0, 100)) }
                 .distinctUntilChanged()
                 .collectLatest { state ->
                     val views = RemoteViews(context.packageName, R.layout.ep8_battery_view)
-                    val level = if (state.connected) state.batteryPercent else 0
+                    val knownLevel = state.batteryPercent.takeIf { state.connected }
+                    val level = knownLevel ?: 0
 
                     views.setViewVisibility(R.id.ep8_bar_green, View.GONE)
                     views.setViewVisibility(R.id.ep8_bar_yellow, View.GONE)
@@ -99,7 +125,7 @@ class Ep8BatteryBarDataType(
                     views.setProgressBar(activeBarId, 100, level, false)
 
                     if (isFullWidth) {
-                        val label = if (state.connected) "$level %" else "-- %"
+                        val label = if (knownLevel != null) "$knownLevel %" else "-- %"
                         views.setTextViewText(R.id.ep8_battery_text, label)
                         views.setViewVisibility(R.id.ep8_battery_text, View.VISIBLE)
                     } else {
@@ -113,10 +139,11 @@ class Ep8BatteryBarDataType(
     }
 }
 
-class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.1.2") {
+class ShimanoEp8Extension : KarooExtension("shimano-ep8", BuildConfig.VERSION_NAME) {
 
     companion object {
         private const val UID_PREFIX = "ep8-"
+        private const val BATTERY_STATUS_KEY = "battery-status"
     }
 
     override fun onCreate() {
@@ -189,10 +216,19 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.1.2") {
 
         val job = scope.launch {
             var wasConnected = false
+            val dedup = DataPointDeduplicator()
+
+            fun sendIfChanged(dataTypeId: String, field: String, value: Double) {
+                if (dedup.shouldSend(dataTypeId, value)) {
+                    emitter.emitSingle(dataTypeId, field, value)
+                }
+            }
 
             ep8Manager.telemetry.collectLatest { state ->
                 if (state.connected && !wasConnected) {
                     wasConnected = true
+                    // Fresh connection: make sure Karoo receives every value again.
+                    dedup.reset()
                     emitter.onNext(OnConnectionStatus(ConnectionStatus.CONNECTED))
                 } else if (!state.connected && wasConnected) {
                     wasConnected = false
@@ -200,37 +236,53 @@ class ShimanoEp8Extension : KarooExtension("shimano-ep8", "1.1.2") {
                 }
 
                 if (state.connected) {
-                    val batteryStatus = when {
-                        state.batteryPercent > 80 -> BatteryStatus.NEW
-                        state.batteryPercent > 50 -> BatteryStatus.GOOD
-                        state.batteryPercent > 20 -> BatteryStatus.OK
-                        state.batteryPercent > 10 -> BatteryStatus.LOW
-                        else -> BatteryStatus.CRITICAL
+                    // Only report values that have actually been received from the bike, so Karoo
+                    // never sees a placeholder 0 % battery / CRITICAL status right after connecting.
+                    // Each value is only sent when it changed (or as a periodic refresh), instead of
+                    // pushing all data points over IPC for every BLE packet.
+                    state.batteryPercent?.let { percent ->
+                        val batteryStatus = when {
+                            percent > 80 -> BatteryStatus.NEW
+                            percent > 50 -> BatteryStatus.GOOD
+                            percent > 20 -> BatteryStatus.OK
+                            percent > 10 -> BatteryStatus.LOW
+                            else -> BatteryStatus.CRITICAL
+                        }
+                        if (dedup.shouldSend(BATTERY_STATUS_KEY, batteryStatus.ordinal.toDouble())) {
+                            emitter.onNext(OnBatteryStatus(batteryStatus))
+                        }
+
+                        val batteryVal = percent.toDouble()
+                        sendIfChanged(DataType.Type.BATTERY_PERCENT, DataType.Field.SINGLE, batteryVal)
+                        sendIfChanged(dtBattery, DataType.Field.SINGLE, batteryVal)
+                        sendIfChanged(dtBatteryBar, DataType.Field.SINGLE, batteryVal)
                     }
-                    emitter.onNext(OnBatteryStatus(batteryStatus))
 
-                    val batteryVal = state.batteryPercent.toDouble()
-                    emitter.emitSingle(DataType.Type.BATTERY_PERCENT, DataType.Field.SINGLE, batteryVal)
-                    emitter.emitSingle(dtBattery, DataType.Field.SINGLE, batteryVal)
-                    emitter.emitSingle(dtBatteryBar, DataType.Field.SINGLE, batteryVal)
-
-                    emitter.emitSingle(dtMode, DataType.Field.SINGLE, state.assistMode.code.toDouble())
-                    emitter.emitSingle(dtRange, DataType.Field.SINGLE, state.activeRangeKm.toDouble())
+                    state.assistMode?.let { mode ->
+                        sendIfChanged(dtMode, DataType.Field.SINGLE, mode.code.toDouble())
+                    }
+                    state.activeRangeKm?.let { rangeKm ->
+                        sendIfChanged(dtRange, DataType.Field.SINGLE, rangeKm.toDouble())
+                    }
 
                     val powerVal = state.riderPowerWatts.toDouble()
-                    emitter.emitSingle(DataType.Type.POWER, DataType.Field.POWER, powerVal)
-                    emitter.emitSingle(dtPower, DataType.Field.SINGLE, powerVal)
+                    sendIfChanged(DataType.Type.POWER, DataType.Field.POWER, powerVal)
+                    sendIfChanged(dtPower, DataType.Field.SINGLE, powerVal)
 
                     val cadenceVal = state.cadenceRpm.toDouble()
-                    emitter.emitSingle(DataType.Type.CADENCE, DataType.Field.CADENCE, cadenceVal)
-                    emitter.emitSingle(dtCadence, DataType.Field.SINGLE, cadenceVal)
+                    sendIfChanged(DataType.Type.CADENCE, DataType.Field.CADENCE, cadenceVal)
+                    sendIfChanged(dtCadence, DataType.Field.SINGLE, cadenceVal)
 
                     val speedMps = state.speedKmh / 3.6
-                    emitter.emitSingle(DataType.Type.SPEED, DataType.Field.SPEED, speedMps)
-                    emitter.emitSingle(dtSpeed, DataType.Field.SINGLE, state.speedKmh)
+                    sendIfChanged(DataType.Type.SPEED, DataType.Field.SPEED, speedMps)
+                    sendIfChanged(dtSpeed, DataType.Field.SINGLE, state.speedKmh)
 
-                    emitter.emitSingle(dtTrip, DataType.Field.SINGLE, state.tripMeters / 1000.0)
-                    emitter.emitSingle(dtOdometer, DataType.Field.SINGLE, state.odometerMeters / 1000.0)
+                    state.tripMeters?.let { meters ->
+                        sendIfChanged(dtTrip, DataType.Field.SINGLE, meters / 1000.0)
+                    }
+                    state.odometerMeters?.let { meters ->
+                        sendIfChanged(dtOdometer, DataType.Field.SINGLE, meters / 1000.0)
+                    }
                 }
             }
         }

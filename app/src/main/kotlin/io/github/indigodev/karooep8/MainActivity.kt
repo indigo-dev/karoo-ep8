@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
             requestBlePermissions()
         }
 
-        val versionLabel = "v${getAppVersionName()}"
+        val versionLabel = "v${BuildConfig.VERSION_NAME}"
 
         setContent {
             val extDiag by ExtensionDiagnostics.state.collectAsState()
@@ -149,13 +149,6 @@ class MainActivity : ComponentActivity() {
         return runCatching {
             packageManager.getPackageInfo(LEGACY_PACKAGE, 0) != null
         }.getOrDefault(false)
-    }
-
-    @Suppress("DEPRECATION")
-    private fun getAppVersionName(): String {
-        return runCatching {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.2"
-        }.getOrDefault("1.1.2")
     }
 }
 

@@ -118,6 +118,32 @@ class ShimanoBleParserTest {
     }
 
     @Test
+    fun `fresh telemetry reports unknown values instead of zero`() {
+        val initial = Ep8Telemetry()
+
+        assertFalse(initial.connected)
+        assertNull(initial.batteryPercent)
+        assertNull(initial.assistMode)
+        assertNull(initial.activeRangeKm)
+        assertNull(initial.odometerMeters)
+        assertNull(initial.tripMeters)
+
+        // A 0x03 packet before any 0x02 packet: ranges known, active range still unknown
+        val rangePacket = ByteArray(19).apply {
+            this[0] = 0x03
+            this[13] = 42
+            this[15] = 68
+            this[17] = 112
+        }
+        val withRanges = ShimanoBleParser.parseTelemetryPacket(rangePacket, initial, null).telemetry
+        assertEquals(112, withRanges.rangeEcoKm)
+        assertNull(withRanges.activeRangeKm)
+
+        // Once the assist mode is known, the matching range becomes active
+        assertEquals(42, withRanges.copy(assistMode = AssistMode.BOOST).activeRangeKm)
+    }
+
+    @Test
     fun `parseTelemetryPacket ignores truncated packets safely`() {
         val initial = Ep8Telemetry(connected = true, speedKmh = 21.5)
         val short02 = byteArrayOf(0x02, 0x01, 0x10)

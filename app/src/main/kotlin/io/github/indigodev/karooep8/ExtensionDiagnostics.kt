@@ -90,6 +90,13 @@ object ExtensionDiagnostics {
         }
     }
 
+    fun onConnectionRestarted(reason: String) {
+        _state.update {
+            val events = (it.gattEvents + "RESTART($reason)").takeLast(6)
+            it.copy(gattConnected = false, gattEvents = events, lastError = reason)
+        }
+    }
+
     fun onError(message: String) {
         _state.update { it.copy(lastError = message) }
     }
