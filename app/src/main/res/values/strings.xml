@@ -24,22 +24,22 @@
     <string name="diag_shimano_found">Compatible E-Bikes Found</string>
     <string name="diag_other_ble">Other Nearby BLE Devices</string>
 
-    <string name="dt_mode_name">Kteps Mode</string>
+    <string name="dt_mode_name">Mode</string>
     <string name="dt_mode_desc">Assist mode (OFF, ECO, TRAIL, BOOST, WALK)</string>
-    <string name="dt_range_name">Kteps Range</string>
+    <string name="dt_range_name">Range</string>
     <string name="dt_range_desc">Remaining range for active mode in km</string>
-    <string name="dt_battery_name">Kteps Battery</string>
+    <string name="dt_battery_name">Battery</string>
     <string name="dt_battery_desc">Battery level in percent (numeric)</string>
-    <string name="dt_battery_bar_name">Kteps Battery Bar</string>
+    <string name="dt_battery_bar_name">Battery Bar</string>
     <string name="dt_battery_bar_desc">Battery level progress bar (visual)</string>
-    <string name="dt_power_name">Kteps Power</string>
+    <string name="dt_power_name">Power</string>
     <string name="dt_power_desc">Rider pedal power in Watts</string>
-    <string name="dt_cadence_name">Kteps Cadence</string>
+    <string name="dt_cadence_name">Cadence</string>
     <string name="dt_cadence_desc">Pedaling cadence in RPM</string>
-    <string name="dt_speed_name">Kteps Speed</string>
+    <string name="dt_speed_name">Speed</string>
     <string name="dt_speed_desc">E-bike speed in km/h</string>
-    <string name="dt_trip_name">Kteps Trip</string>
+    <string name="dt_trip_name">Trip</string>
     <string name="dt_trip_desc">Session trip distance in km</string>
-    <string name="dt_odometer_name">Kteps Odometer</string>
+    <string name="dt_odometer_name">Odometer</string>
     <string name="dt_odometer_desc">Total motor odometer in km</string>
 </resources>
