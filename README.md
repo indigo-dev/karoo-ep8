@@ -24,7 +24,7 @@ Because the wireless interface broadcasts e-bike telemetry (assist mode, battery
 * **Automatic BLE Reconnection & Live Battery Monitoring:** Automatically reconnects after mid-ride power-offs without resetting session trip distance, and tracks battery percentage via GATT notifications + periodic fallback polling.
 * **Virtual Sensor for Native Karoo Data Fields:**
   * Feeds native Karoo data fields for **Speed** (`SPEED`, including average, max, and auto-pause), **Cadence** (`CADENCE`), **Rider Power** (`POWER`, including 3s/10s smoothed watts, Normalized Power, and zones), and **Sensor Battery** (`BATTERY_PERCENT`).
-* **Graphical Assist Mode Tile (`Kteps Mode` / `Kteps Modus`):**
+* **Graphical Assist Mode Tile (`Kteps Mode`):**
   * Clear text indicator paired with a colored status dot matching the official color scheme:
     * ⚫ **OFF** (Gray) – Motor assistance off
     * 🔵 **ECO** (Blue) – Eco mode
@@ -32,10 +32,10 @@ Because the wireless interface broadcasts e-bike telemetry (assist mode, battery
     * 🟠 **BOOST** (Yellow/Orange) – Boost mode
     * 🔵 **WALK** (Cyan) – Walk assist selected (Standby)
     * 🟣 **WALK+** (Purple) – Walk assist active (Motor pushing)
-* **Graphical Battery Bar (`Kteps Battery Bar` / `Kteps Akku Balken`):**
+* **Graphical Battery Bar (`Kteps Battery Bar`):**
   * Visual progress bar styled to match native Karoo graphics with automatic color thresholds (**Green** > 50%, **Yellow** 21–50%, **Red** ≤ 20%).
   * **Responsive Percentage Badge:** When placed in a full-width data field (`gridSize == 60`), a dark percentage badge (e.g., `62 %`) automatically appears in the bottom-left corner of the bar, replicating the native Hammerhead e-bike battery field.
-* **Dynamic Remaining Range (`Kteps Range` / `Kteps Reichweite`):**
+* **Dynamic Remaining Range (`Kteps Range`):**
   * A single, unified data field that automatically displays the remaining range in kilometers matching the currently active assist mode (`ECO`, `TRAIL`, or `BOOST`).
 * **True Motor Odometer & Session Trip Counter:**
   * Decodes the internal total distance (odometer) of the drive unit down to the meter and calculates the current session trip distance since connection.
@@ -49,17 +49,17 @@ Once your e-bike is paired, the following data fields are available in the Karoo
 
 ### 1. Custom Extension Data Fields (Category: *Kteps E-Bike*)
 
-| Data Field (EN / DE) | Type | Unit / Format | Description |
+| Data Field | Type | Unit / Format | Description |
 | :--- | :---: | :---: | :--- |
-| **Kteps Mode** / **Kteps Modus** | Graphical | `● OFF` / `ECO` / `TRAIL` / `BOOST` / `WALK` / `WALK+` | Current assist mode with color-coded status dot |
-| **Kteps Range** / **Kteps Reichweite** | Numeric | `km` | Remaining range for the currently active assist mode |
-| **Kteps Battery** / **Kteps Akku** | Numeric | `%` | Battery state of charge as a large numeric percentage (`0–100`) |
-| **Kteps Battery Bar** / **Kteps Akku Balken** | Graphical | Progress Bar (+ `%` on full width) | Color-changing battery bar (Green/Yellow/Red) with percentage badge in 1-column full-width layouts |
-| **Kteps Power** / **Kteps Leistung** | Numeric | `W` | Current rider pedal power in Watts |
-| **Kteps Cadence** / **Kteps Kadenz** | Numeric | `RPM` | Current pedaling cadence |
-| **Kteps Speed** / **Kteps Tempo** | Numeric | `km/h` | Current e-bike speed from the wheel sensor |
-| **Kteps Trip** / **Kteps Trip-km** | Numeric | `km` | Trip distance ridden since connecting |
-| **Kteps Odometer** / **Kteps Gesamt-km** | Numeric | `km` | Total motor odometer distance |
+| **Kteps Mode** | Graphical | `● OFF` / `ECO` / `TRAIL` / `BOOST` / `WALK` / `WALK+` | Current assist mode with color-coded status dot |
+| **Kteps Range** | Numeric | `km` | Remaining range for the currently active assist mode |
+| **Kteps Battery** | Numeric | `%` | Battery state of charge as a large numeric percentage (`0–100`) |
+| **Kteps Battery Bar** | Graphical | Progress Bar (+ `%` on full width) | Color-changing battery bar (Green/Yellow/Red) with percentage badge in 1-column full-width layouts |
+| **Kteps Power** | Numeric | `W` | Current rider pedal power in Watts |
+| **Kteps Cadence** | Numeric | `RPM` | Current pedaling cadence |
+| **Kteps Speed** | Numeric | `km/h` | Current e-bike speed from the wheel sensor |
+| **Kteps Trip** | Numeric | `km` | Trip distance ridden since connecting |
+| **Kteps Odometer** | Numeric | `km` | Total motor odometer distance |
 
 ### 2. Supported Native Karoo System Fields
 
@@ -132,7 +132,7 @@ The display or junction unit dictates whether live telemetry can be transmitted 
    * Select your discovered bike (e.g., `EWEN100...` or `Shimano STEPS`) and confirm pairing.
 5. **Add Data Fields to Your Ride Profile:**
    * Go to **Profiles** -> select your e-bike profile -> **Data Pages**.
-   * Add any fields from the **Kteps E-Bike** category (e.g., *Kteps Mode* / *Kteps Modus*, *Kteps Battery Bar* / *Kteps Akku Balken*, *Kteps Range* / *Kteps Reichweite*) or native Karoo sensor fields.
+   * Add any fields from the **Kteps E-Bike** category (e.g., *Kteps Mode*, *Kteps Battery Bar*, *Kteps Range*) or native Karoo sensor fields.
 
 ---
 
