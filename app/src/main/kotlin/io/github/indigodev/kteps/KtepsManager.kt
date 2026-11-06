@@ -14,6 +14,7 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
@@ -53,6 +54,13 @@ class KtepsManager(
 
         /** GATT_ERROR as reported by many stacks when the peer is out of range / switched off. */
         private const val GATT_STATUS_GENERIC_ERROR = 255
+
+        /** Hammerhead SensorService actions for coordinating Bluetooth power state on Karoo OS. */
+        private const val HAMMERHEAD_SENSOR_SERVICE_PACKAGE = "io.hammerhead.sensorservice"
+        private const val ACTION_BLUETOOTH_REQUEST = "io.hammerhead.sensorservice.BLUETOOTH_REQUEST"
+        private const val ACTION_BLUETOOTH_RELEASE = "io.hammerhead.sensorservice.BLUETOOTH_RELEASE"
+        private const val EXTRA_CLIENT_ID = "ID"
+        private const val HAMMERHEAD_CLIENT_ID = "kteps"
     }
 
     /** Steps of the GATT handshake for the currently active [BluetoothGatt]. */
@@ -124,11 +132,51 @@ class KtepsManager(
             Settings.Global.getInt(context.contentResolver, "ble_scan_always_enabled", 0) == 1
         }.getOrDefault(false)
 
+    /**
+     * Informs Hammerhead's BluetoothCoordinator that this extension needs Bluetooth.
+     * On Karoo OS, if no native BLE sensors are active, BluetoothCoordinator forcefully
+     * disables Bluetooth whenever it enters STATE_ON unless an active client ID is registered
+     * via this broadcast.
+     */
+    private fun requestHammerheadBluetooth() {
+        runCatching {
+            val intent = Intent(ACTION_BLUETOOTH_REQUEST).apply {
+                setPackage(HAMMERHEAD_SENSOR_SERVICE_PACKAGE)
+                putExtra(EXTRA_CLIENT_ID, HAMMERHEAD_CLIENT_ID)
+            }
+            context.sendBroadcast(intent)
+            Log.i(TAG, "Sent BLUETOOTH_REQUEST to Hammerhead SensorService ($HAMMERHEAD_CLIENT_ID)")
+            ExtensionDiagnostics.onGattEvent("hhBtRequest")
+        }.onFailure { e ->
+            Log.w(TAG, "Failed to send BLUETOOTH_REQUEST", e)
+        }
+    }
+
+    /**
+     * Releases our client registration with Hammerhead's BluetoothCoordinator so Karoo OS
+     * can power down Bluetooth to save battery when no sensors or extensions are using it.
+     */
+    private fun releaseHammerheadBluetooth() {
+        runCatching {
+            val intent = Intent(ACTION_BLUETOOTH_RELEASE).apply {
+                setPackage(HAMMERHEAD_SENSOR_SERVICE_PACKAGE)
+                putExtra(EXTRA_CLIENT_ID, HAMMERHEAD_CLIENT_ID)
+            }
+            context.sendBroadcast(intent)
+            Log.i(TAG, "Sent BLUETOOTH_RELEASE to Hammerhead SensorService ($HAMMERHEAD_CLIENT_ID)")
+            ExtensionDiagnostics.onGattEvent("hhBtRelease")
+        }.onFailure { e ->
+            Log.w(TAG, "Failed to send BLUETOOTH_RELEASE", e)
+        }
+    }
+
     @SuppressLint("MissingPermission")
     private fun ensureBleEnabled(adapter: BluetoothAdapter): BleAvailability {
-        // Register as a BLE app in BluetoothManagerService so Hammerhead's BluetoothCoordinator
-        // cannot tear down GattService when SensorSearchActivity closes, and so BLE can run
-        // in STATE_BLE_ON ("LE only mode") without triggering BluetoothCoordinator's STATE_ON disable.
+        // Register with Hammerhead's BluetoothCoordinator so it keeps Bluetooth enabled
+        // even when no native Karoo BLE sensors are active.
+        requestHammerheadBluetooth()
+
+        // Also register as a BLE app in AOSP BluetoothManagerService if enableBLE() is available.
         val enableBleResult = runCatching {
             val method = adapter.javaClass.getMethod("enableBLE")
             method.invoke(adapter) as? Boolean ?: false
@@ -141,43 +189,27 @@ class KtepsManager(
             return BleAvailability.READY
         }
 
-        if (enableBleResult) {
-            Log.i(TAG, "Bluetooth LE enabling via enableBLE()")
-            ExtensionDiagnostics.onGattEvent("enableBLE(true)")
-            return BleAvailability.ENABLING
-        }
-
-        // Fallback when ble_scan_always_enabled is not set on the device: re-enable the adapter
-        // after SensorSearchActivity's release of axs_connect turned Bluetooth off.
-        @Suppress("DEPRECATION")
-        val enableResult = runCatching { adapter.enable() }.getOrDefault(false)
-        Log.i(TAG, "Bluetooth LE not enabled (enableBLE=false, adapter.enable=$enableResult)")
-        ExtensionDiagnostics.onGattEvent("enable($enableResult)")
-        if (enableResult) {
-            return BleAvailability.ENABLING
-        }
-
-        val reason = if (!isBleScanAlwaysAvailable()) {
-            "Bluetooth off - enable 'Bluetooth scanning' in location settings"
-        } else {
-            "Bluetooth off - enableBLE() unavailable on this device"
-        }
-        Log.w(TAG, reason)
-        ExtensionDiagnostics.onError(reason)
-        return BleAvailability.UNAVAILABLE
+        Log.i(TAG, "Bluetooth LE enabling via Hammerhead BluetoothCoordinator")
+        ExtensionDiagnostics.onGattEvent("enablingBt")
+        return BleAvailability.ENABLING
     }
 
-    /** Releases our BLE-app registration so BLE does not stay on after the ride. */
+    /** Releases our BLE registration with Hammerhead and Android so BLE does not stay on after the ride. */
     private fun releaseBleAppRegistrationLocked() {
-        if (!bleAppRegistered || activeScanCallback != null) return
-        val adapter = bluetoothAdapter() ?: return
-        val result = runCatching {
-            val method = adapter.javaClass.getMethod("disableBLE")
-            method.invoke(adapter) as? Boolean ?: false
-        }.getOrDefault(false)
-        bleAppRegistered = false
-        Log.i(TAG, "Released BLE app registration (disableBLE=$result)")
-        ExtensionDiagnostics.onGattEvent("disableBLE($result)")
+        if (activeTokens.isNotEmpty() || activeScanCallback != null) return
+        releaseHammerheadBluetooth()
+        if (bleAppRegistered) {
+            val adapter = bluetoothAdapter()
+            if (adapter != null) {
+                val result = runCatching {
+                    val method = adapter.javaClass.getMethod("disableBLE")
+                    method.invoke(adapter) as? Boolean ?: false
+                }.getOrDefault(false)
+                Log.i(TAG, "Released BLE app registration (disableBLE=$result)")
+                ExtensionDiagnostics.onGattEvent("disableBLE($result)")
+            }
+            bleAppRegistered = false
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -297,16 +329,22 @@ class KtepsManager(
         }
 
         awaitClose {
-            synchronized(gattLock) {
+            val shouldRelease = synchronized(gattLock) {
                 if (activeScanCallback === scanCallback) {
                     activeScanCallback = null
                 }
+                activeTokens.isEmpty()
             }
             if (scanStarted) {
                 try {
                     scanner.stopScan(scanCallback)
                 } catch (e: Exception) {
                     Log.w(TAG, "Error stopping BLE scan", e)
+                }
+            }
+            if (shouldRelease) {
+                synchronized(gattLock) {
+                    releaseBleAppRegistrationLocked()
                 }
             }
         }

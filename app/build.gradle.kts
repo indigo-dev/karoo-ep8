@@ -24,7 +24,7 @@ android {
         applicationId = "io.github.indigodev.kteps"
         minSdk = 23
         targetSdk = 34
-        versionCode = 3
+        versionCode = 4
         versionName = libs.versions.app.get()
     }
 
