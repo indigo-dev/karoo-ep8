@@ -30,21 +30,51 @@ object ShimanoBleParser {
         val sessionStartOdoMeters: Long?
     )
 
+    /**
+     * Checks if a device model is known to be incompatible with BLE live telemetry.
+     *
+     * Specifically, the SC-E8000 only provides the E-Tube Project configuration service (0x18FF)
+     * and lacks the 0x18EF D-Fly telemetry service altogether. SC-E5000 has no BLE hardware.
+     */
+    fun isUnsupportedModel(deviceName: String?): Boolean {
+        val name = deviceName?.trim().orEmpty()
+        if (name.isEmpty()) return false
+        return name.contains("E8000", ignoreCase = true) || name.contains("E5000", ignoreCase = true)
+    }
+
+    /**
+     * Checks if a UUID matches Shimano's proprietary BLE service format
+     * (either the full 128-bit SHIMANO_BLE suffix or 16-bit representation of 0x18EF/0x18FF/0x18FE).
+     */
+    fun isShimanoServiceUuid(uuid: UUID): Boolean {
+        val str = uuid.toString().lowercase()
+        return str.endsWith(SHIMANO_UUID_SUFFIX.lowercase()) ||
+            str.startsWith("000018ef-") ||
+            str.startsWith("000018ff-") ||
+            str.startsWith("000018fe-")
+    }
+
     fun isShimanoAdvertisement(
         deviceName: String?,
         serviceUuids: List<UUID>,
         manufacturerIds: Set<Int> = emptySet()
     ): Boolean {
+        val name = deviceName?.trim().orEmpty()
+        // Never advertise known incompatible units (SC-E8000, SC-E5000) as supported bikes
+        if (isUnsupportedModel(name)) {
+            return false
+        }
         if (manufacturerIds.contains(SHIMANO_COMPANY_ID)) {
             return true
         }
-        if (serviceUuids.any { it.toString().endsWith(SHIMANO_UUID_SUFFIX, ignoreCase = true) }) {
+        if (serviceUuids.any { isShimanoServiceUuid(it) }) {
             return true
         }
-        val name = deviceName?.trim().orEmpty()
         if (name.isEmpty()) return false
         return name.startsWith("EW", ignoreCase = true) ||
             name.startsWith("SC-E", ignoreCase = true) ||
+            name.startsWith("SC-EM", ignoreCase = true) ||
+            name.startsWith("SC-EN", ignoreCase = true) ||
             name.contains("SHIMANO", ignoreCase = true) ||
             name.contains("STEPS", ignoreCase = true) ||
             name.contains("EP8", ignoreCase = true) ||

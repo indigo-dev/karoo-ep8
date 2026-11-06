@@ -326,7 +326,7 @@ class KtepsExtension : KarooExtension("kteps", BuildConfig.VERSION_NAME) {
     }
 
     override fun onDestroy() {
-        ktepsManager.disconnect()
+        ktepsManager.destroy()
         scope.cancel()
         super.onDestroy()
     }

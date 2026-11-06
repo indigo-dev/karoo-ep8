@@ -81,8 +81,12 @@ object BleDiagnosticScanner {
             val uuids = runCatching {
                 device.uuids?.mapNotNull { it?.uuid } ?: emptyList()
             }.getOrDefault(emptyList())
-            if (ShimanoBleParser.isShimanoAdvertisement(name, uuids)) {
-                val title = name.ifBlank { "Shimano STEPS" }
+            val title = name.ifBlank { "Shimano STEPS" }
+            if (ShimanoBleParser.isUnsupportedModel(name)) {
+                synchronized(lock) {
+                    shimanoMap[mac] = "$title [$mac] [Incompatible: lacks BLE telemetry] ($sourceLabel)"
+                }
+            } else if (ShimanoBleParser.isShimanoAdvertisement(name, uuids)) {
                 synchronized(lock) {
                     shimanoMap[mac] = "$title [$mac] ($sourceLabel)"
                 }
@@ -126,6 +130,7 @@ object BleDiagnosticScanner {
                     emptySet()
                 }
 
+                val isUnsupported = ShimanoBleParser.isUnsupportedModel(name)
                 val isShimano = ShimanoBleParser.isShimanoAdvertisement(name, uuids, manufacturerIds)
                 val rssi = result.rssi
 
@@ -133,7 +138,11 @@ object BleDiagnosticScanner {
                     packetCount += 1
                     var listChanged = false
 
-                    if (isShimano) {
+                    if (isUnsupported) {
+                        val title = name.ifBlank { "Shimano STEPS" }
+                        val prev = shimanoMap.put(mac, "$title [$mac] [Incompatible: lacks BLE telemetry] (${rssi}dBm)")
+                        if (prev == null) listChanged = true
+                    } else if (isShimano) {
                         val title = name.ifBlank { "Shimano STEPS" }
                         val prev = shimanoMap.put(mac, "$title [$mac] (${rssi}dBm)")
                         if (prev == null) listChanged = true

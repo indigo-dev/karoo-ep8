@@ -211,6 +211,9 @@ class ShimanoBleParserTest {
         assertTrue(ShimanoBleParser.isShimanoAdvertisement("EW-EN100", emptyList()))
         assertTrue(ShimanoBleParser.isShimanoAdvertisement("SC-EM800", emptyList()))
         assertTrue(ShimanoBleParser.isShimanoAdvertisement("SC-EN600", emptyList()))
+        assertTrue(ShimanoBleParser.isShimanoAdvertisement("SC-E7000", emptyList()))
+        assertTrue(ShimanoBleParser.isShimanoAdvertisement("SC-E6100", emptyList()))
+        assertTrue(ShimanoBleParser.isShimanoAdvertisement("EW-EX310", emptyList()))
         assertTrue(ShimanoBleParser.isShimanoAdvertisement("Shimano STEPS", emptyList()))
         assertTrue(ShimanoBleParser.isShimanoAdvertisement("EP600", emptyList()))
         assertFalse(
@@ -220,5 +223,38 @@ class ShimanoBleParserTest {
                 manufacturerIds = setOf(0x0087)
             )
         )
+    }
+
+    @Test
+    fun `isUnsupportedModel identifies SC-E8000 and SC-E5000 and excludes them from advertisement`() {
+        assertTrue(ShimanoBleParser.isUnsupportedModel("SC-E8000"))
+        assertTrue(ShimanoBleParser.isUnsupportedModel("SCE8000"))
+        assertTrue(ShimanoBleParser.isUnsupportedModel("E8000"))
+        assertTrue(ShimanoBleParser.isUnsupportedModel("SC-E5000"))
+        assertTrue(ShimanoBleParser.isUnsupportedModel("STEPS-E8000-BIKE"))
+
+        assertFalse(ShimanoBleParser.isUnsupportedModel("EW-EN100"))
+        assertFalse(ShimanoBleParser.isUnsupportedModel("SC-E7000"))
+        assertFalse(ShimanoBleParser.isUnsupportedModel("SC-EM800"))
+        assertFalse(ShimanoBleParser.isUnsupportedModel("SC-EN600"))
+        assertFalse(ShimanoBleParser.isUnsupportedModel("SC-E6100"))
+        assertFalse(ShimanoBleParser.isUnsupportedModel("EW-EX310"))
+
+        // Excluded from advertisement even if name starts with SC-E or Shimano
+        assertFalse(ShimanoBleParser.isShimanoAdvertisement("SC-E8000", emptyList()))
+        assertFalse(ShimanoBleParser.isShimanoAdvertisement("SCE8000", emptyList()))
+        assertFalse(ShimanoBleParser.isShimanoAdvertisement("SC-E5000", emptyList()))
+    }
+
+    @Test
+    fun `isShimanoServiceUuid detects 128-bit and 16-bit Shimano services`() {
+        assertTrue(ShimanoBleParser.isShimanoServiceUuid(ShimanoBleParser.SERVICE_SHIMANO_DFLY))
+        assertTrue(ShimanoBleParser.isShimanoServiceUuid(ShimanoBleParser.SERVICE_SHIMANO_AUTH))
+        assertTrue(ShimanoBleParser.isShimanoServiceUuid(UUID.fromString("000018fe-5348-494d-414e-4f5f424c4500")))
+        assertTrue(ShimanoBleParser.isShimanoServiceUuid(UUID.fromString("000018ef-0000-1000-8000-00805f9b34fb")))
+        assertTrue(ShimanoBleParser.isShimanoServiceUuid(UUID.fromString("000018ff-0000-1000-8000-00805f9b34fb")))
+
+        assertFalse(ShimanoBleParser.isShimanoServiceUuid(UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb")))
+        assertFalse(ShimanoBleParser.isShimanoServiceUuid(UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb")))
     }
 }
