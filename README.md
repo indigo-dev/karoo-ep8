@@ -71,31 +71,45 @@ Because the extension registers as a multi-type sensor within Karoo OS, you can 
 
 ---
 
-## 🔬 Decoded BLE Telemetry Protocol
+## 🚲 Hardware Compatibility
 
-Communication uses Bluetooth Low Energy (GATT) via the standard Battery Service and the proprietary D-Fly / Telemetry characteristic.
+Kteps connects to the bike's **wireless display or junction unit**, which acts as the Bluetooth LE gateway for the entire Shimano E-Tube bus.
 
-### GATT Services & Characteristics
-* **Battery Service:** `0000180f-0000-1000-8000-00805f9b34fb`
-  * **Battery Level Characteristic:** `00002a19-0000-1000-8000-00805f9b34fb` (Read & Notify)
-* **Auth / Discovery Service:** `000018ff-5348-494d-414e-4f5f424c4500`
-* **D-Fly / Telemetry Service:** `000018ef-5348-494d-414e-4f5f424c4500`
-  * **Telemetry Characteristic:** `00002ac1-5348-494d-414e-4f5f424c4500` (Notify via CCCD `0x2902`)
+### 1. Drive Units (Motors)
 
-### Packet Structure on `00002ac1-5348-494d-414e-4f5f424c4500`
+All Shimano drive units connected via E-Tube are supported, provided a compatible wireless display or junction unit is present on the bus:
 
-| Metric | Source / Packet Header | Byte Offset | Data Type & Conversion | Description / States |
-| :--- | :--- | :---: | :--- | :--- |
-| **Battery Level (%)** | `0x2A19` (Battery) | `bytes[0]` | `UInt8` (1:1 in `%`) | `0` to `100 %` |
-| **Assist Mode** | `0x2AC1` -> Packet `0x02` (10 Bytes) | `bytes[1]` | `UInt8` | `0`=OFF, `1`=ECO, `2`=TRAIL, `3`=BOOST, `4`=WALK (Standby), `5`=WALK+ (Active pushing) |
-| **Speed** | `0x2AC1` -> Packet `0x02` (10 Bytes) | `bytes[2..3]` | `UInt16 LE` / `10.0` | Speed in `km/h` (`0xFFFF` = Invalid / Stationary) |
-| **Rider Power** | `0x2AC1` -> Packet `0x02` (10 Bytes) | `bytes[4]` | `UInt8` | Rider pedal input in `Watts` (`0` when coasting) |
-| **Cadence** | `0x2AC1` -> Packet `0x02` (10 Bytes) | `bytes[5]` | `UInt8` | Pedaling cadence in `RPM` |
-| **Walk Button State** | `0x2AC1` -> Packet `0x01` (15 Bytes) | `bytes[14]` | `UInt8` | `0x01` = Released, `0x00` = Walk button held down |
-| **Total Odometer** | `0x2AC1` -> Packet `0x03` (19 Bytes) | `bytes[1..4]` | `UInt32 LE` | Total motor odometer in **meters** (divided by `1000.0` = `km`) |
-| **Range BOOST** | `0x2AC1` -> Packet `0x03` (19 Bytes) | `bytes[13..14]`| `UInt16 LE` | Estimated remaining range in BOOST mode in `km` |
-| **Range TRAIL** | `0x2AC1` -> Packet `0x03` (19 Bytes) | `bytes[15..16]`| `UInt16 LE` | Estimated remaining range in TRAIL mode in `km` |
-| **Range ECO** | `0x2AC1` -> Packet `0x03` (19 Bytes) | `bytes[17..18]`| `UInt16 LE` | Estimated remaining range in ECO mode in `km` |
+| Drive Unit | Cable Standard | Support Status | Notes |
+| :--- | :---: | :---: | :--- |
+| **Shimano EP801 (DU-EP801)** | EW-SD300 | ✅ Supported | Compatible with SC-EM800, SC-EN600, or EW-EN100 (via EW-AD305) |
+| **Shimano EP800 (DU-EP800 / EP8)** | EW-SD300 | ✅ Supported | Full 85 Nm telemetry support |
+| **Shimano EP6 (DU-EP600)** | EW-SD300 | ✅ Supported | Full telemetry support |
+| **Shimano STEPS E8000 (DU-E8000)** | EW-SD50 | ✅ Supported | Supported when using EW-EN100, SC-E7000, or SC-EM800 (via EW-AD305) |
+| **Shimano STEPS E7000 (DU-E7000)** | EW-SD50 | ✅ Supported | Supported with EW-EN100, SC-E7000, etc. |
+| **Shimano STEPS E6100 (DU-E6100)** | EW-SD50 | ✅ Supported | Supported with EW-EN100, SC-E6100, etc. |
+| **Shimano STEPS E5000 (DU-E5000)** | EW-SD50 | ✅ Supported | Supported if an EW-EN100 wireless junction is retrofitted |
+
+---
+
+### 2. Displays & Wireless Units (Bluetooth Gateways)
+
+The display or junction unit dictates whether live telemetry can be transmitted over Bluetooth LE:
+
+| Model | Type | Cable Standard | Support Status | Details |
+| :--- | :--- | :---: | :---: | :--- |
+| **EW-EN100** | Wireless Junction Box (2 LEDs) | EW-SD50 / EW-SD300* | ✅ **Fully Supported** | Reference device. Ultra-compact, fast connection, no passkey required. |
+| **SC-EM800** | 1.6" Color LCD | EW-SD300 | ✅ **Fully Supported** | Modern EP8/EP6 display. Supports automatic 6-digit passkey bonding. |
+| **SC-E7000** | 1.39" Monochrome LCD | EW-SD50 | ✅ **Fully Supported** | Compact MTB display. Supports passkey bonding. |
+| **SC-EN600 / SC-EN610** | Compact Color Display | EW-SD300 | ✅ **Fully Supported** | Latest generation EP801/EP6 display. |
+| **SC-E6100** | 2.7" Large Monochrome LCD | EW-SD50 | ✅ **Fully Supported** | Trekking/City display; broadcasts identical D-Fly telemetry. |
+| **EW-SW310 / EW-EX310** | Integrated Frame Switch | EW-SD300 | ✅ **Fully Supported** | Clean cockpits without handlebar display. |
+| **SC-E8000** | 1.6" Color LCD (Gen 1) | EW-SD50 | ❌ **Not Supported** | **Hardware/firmware limitation:** Lacks the `0x18EF` live telemetry service (only exposes `0x18FF` for E-Tube configuration). |
+| **SC-E5000** | Compact Display | EW-SD50 | ❌ **Not Supported** | No Bluetooth LE hardware built into the unit. |
+
+*\*Note: Mixing EW-SD50 and EW-SD300 components requires the passive Shimano EW-AD305 adapter.*
+
+> 💡 **Detailed Protocol Information:**  
+> For the low-level GATT architecture, packet definitions (`0x02`, `0x03`, `0x01`), and byte offsets, please refer to the **[BLE Protocol & Byte Specification](docs/ble-protocol.md)** in the wiki.
 
 ---
 

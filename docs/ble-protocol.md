@@ -30,14 +30,25 @@ The Shimano custom base UUID is:
 
 ## 2. Hardware Compatibility & Model Matrix
 
-* **EW-EN100, SC-EM800, SC-E7000, SC-EN600, SC-E6100:**  
-  All provide the D-Fly telemetry service (`0x18EF`) and are 100% compatible with the Kteps parser.
-* **SC-E8000:**  
-  ❌ **Incompatible.** Exposes only the configuration service `0x18FF` (for E-Tube Project) and completely lacks the `0x18EF` live telemetry service.
-* **SC-E5000:**  
-  ❌ **Incompatible.** Does not have Bluetooth hardware.
-* **Bonding & Passkey:**  
-  While the EW-EN100 (which has no screen) pairs directly via Just Works or default PIN, displays such as the SC-EM800 or SC-E7000 typically require entering a 6-digit passkey on the Karoo during initial pairing before notifications can be subscribed to.
+The display or junction unit acts as the Bluetooth LE gateway for the entire Shimano E-Tube bus:
+
+### Displays & Wireless Units
+
+| Model | Type | Cable Standard | Status | Details |
+| :--- | :--- | :---: | :---: | :--- |
+| **EW-EN100** | Wireless Junction Box (2 LEDs) | EW-SD50 / EW-SD300* | ✅ **Supported** | Reference device. Ultra-compact, fast connection, no passkey required. |
+| **SC-EM800** | 1.6" Color LCD | EW-SD300 | ✅ **Supported** | Modern EP8/EP6 display. Supports automatic 6-digit passkey bonding. |
+| **SC-E7000** | 1.39" Monochrome LCD | EW-SD50 | ✅ **Supported** | Compact MTB display. Supports passkey bonding. |
+| **SC-EN600 / SC-EN610** | Compact Color Display | EW-SD300 | ✅ **Supported** | Latest generation EP801/EP6 display. |
+| **SC-E6100** | 2.7" Large Monochrome LCD | EW-SD50 | ✅ **Supported** | Trekking/City display; broadcasts identical D-Fly telemetry. |
+| **EW-SW310 / EW-EX310** | Integrated Frame Switch | EW-SD300 | ✅ **Supported** | Clean cockpits without handlebar display. |
+| **SC-E8000** | 1.6" Color LCD (Gen 1) | EW-SD50 | ❌ **Incompatible** | **Protocol limitation:** Lacks the `0x18EF` live telemetry service (only exposes `0x18FF` for configuration). |
+| **SC-E5000** | Compact Display | EW-SD50 | ❌ **Incompatible** | No Bluetooth LE hardware built into the unit. |
+
+*\*Note: Mixing EW-SD50 and EW-SD300 components requires the passive Shimano EW-AD305 adapter.*
+
+### Compatible Drive Units (Motors)
+All Shimano drive units (EP801, EP800, EP6, E8000, E7000, E6100, E5000) broadcast telemetry over E-Tube to the wireless display or junction unit above. Compatibility is determined strictly by the wireless gateway, not by the drive unit itself.
 
 ---
 
