@@ -59,9 +59,10 @@ Kteps basiert auf dem offiziellen Hammerhead Extension SDK (**`karoo-ext`**) und
 
 ### A. Reverse-Engineering der Shimano BLE-Protokolle
 * **Telemetrie-Dienst (`000018ef-5348-494d-414e-4f5f424c4500`):**
-  * Characteristic **`0x2AC1`**: Überträgt per GATT-Notification kontinuierlich zwei Paketarten:
+  * Characteristic **`0x2AC1`**: Überträgt per GATT-Notification kontinuierlich zwei Kern-Paketarten:
     * **Paket `0x02` (Echtzeitdaten):** Unterstützungsmodus, Geschwindigkeit (0.1 km/h Auflösung), Fahrer-Watt und Trittfrequenz.
     * **Paket `0x03` (Distanz & Reichweite):** 32-Bit Gesamtkilometerstand des Motors sowie Restreichweiten in km für Boost, Trail und Eco.
+  * *(Hinweis: Eine vollständige Byte-für-Byte Aufschlüsselung aller Pakete inkl. ungenutzter Di2-, Profil- und Fehler-Bytes befindet sich in der [BLE-Protokoll & Byte-Spezifikation](ble-protokoll.md)).*
 
 ### B. Hybrid-Batteriemanagement
 * Shimano trennt Telemetrie und Akkustand strikt: Der Akkustand wird über den offiziellen Bluetooth SIG Dienst **Battery Service (`0x180F` / `0x2A19`)** bereitgestellt.
