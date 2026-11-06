@@ -40,11 +40,11 @@ class KtepsManager(
         private const val TAG = "Kteps"
         private const val RECONNECT_DELAY_MS = 3_000L
         private const val FAST_RECONNECT_DELAY_MS = 600L
-        private const val DISCONNECT_GRACE_MS = 5_000L
+        private const val DISCONNECT_GRACE_MS = 15_000L
         private const val SERVICE_DISCOVERY_DELAY_MS = 250L
 
         /** Max time from connectGatt() until STATE_CONNECTED before aborting the attempt. */
-        private const val CONNECT_TIMEOUT_MS = 8_000L
+        private const val CONNECT_TIMEOUT_MS = 30_000L
 
         /** Max time from STATE_CONNECTED until telemetry notifications are confirmed. */
         private const val HANDSHAKE_TIMEOUT_MS = 15_000L
@@ -238,6 +238,10 @@ class KtepsManager(
         val manager = bluetoothManager()
         val adapter = manager?.adapter
         if (adapter != null) {
+            synchronized(gattLock) {
+                disconnectGraceJob?.cancel()
+                disconnectGraceJob = null
+            }
             ensureBleEnabled(adapter)
         }
         val scanner = adapter?.bluetoothLeScanner
@@ -329,7 +333,7 @@ class KtepsManager(
         }
 
         awaitClose {
-            val shouldRelease = synchronized(gattLock) {
+            val shouldScheduleGrace = synchronized(gattLock) {
                 if (activeScanCallback === scanCallback) {
                     activeScanCallback = null
                 }
@@ -342,9 +346,21 @@ class KtepsManager(
                     Log.w(TAG, "Error stopping BLE scan", e)
                 }
             }
-            if (shouldRelease) {
+            if (shouldScheduleGrace) {
                 synchronized(gattLock) {
-                    releaseBleAppRegistrationLocked()
+                    scheduleBleReleaseGraceLocked()
+                }
+            }
+        }
+    }
+
+    private fun scheduleBleReleaseGraceLocked() {
+        disconnectGraceJob?.cancel()
+        disconnectGraceJob = scope.launch {
+            delay(DISCONNECT_GRACE_MS)
+            synchronized(gattLock) {
+                if (activeTokens.isEmpty() && activeScanCallback == null) {
+                    disconnectLocked()
                 }
             }
         }
@@ -386,17 +402,7 @@ class KtepsManager(
             if (activeTokens.isNotEmpty()) {
                 return
             }
-            disconnectGraceJob?.cancel()
-            disconnectGraceJob = scope.launch {
-                delay(DISCONNECT_GRACE_MS)
-                // Check and disconnect atomically: an acquireConnection() between a separate check
-                // and disconnect() would otherwise lose its fresh token and its GATT connection.
-                synchronized(gattLock) {
-                    if (activeTokens.isEmpty()) {
-                        disconnectLocked()
-                    }
-                }
-            }
+            scheduleBleReleaseGraceLocked()
         }
     }
 
