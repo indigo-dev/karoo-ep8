@@ -1,6 +1,6 @@
 # 🛠️ Fehleranalyse: Logcat-Aufzeichnung für Support
 
-Falls Kteps auf deinem Karoo 3 unerwartet hängenbleibt (z. B. dauerhafter Status `SUCHE...` / `SEARCHING`, keine Datenanzeige oder Verbindungsabbrüche), ist ein **Android Logcat** das wichtigste Werkzeug. Damit kann der Entwickler den genauen Funk-Handshake, Bluetooth-Fehlercodes und interne Systemmeldungen sekundengenau nachvollziehen.
+Falls Kteps auf deinem Karoo unerwartet hängenbleibt (z. B. dauerhafter Status `SUCHE...` / `SEARCHING`, keine Datenanzeige oder Verbindungsabbrüche), ist ein **Android Logcat** das wichtigste Werkzeug. Damit kann der Entwickler den genauen Funk-Handshake, Bluetooth-Fehlercodes und interne Systemmeldungen sekundengenau nachvollziehen.
 
 ---
 
@@ -28,7 +28,7 @@ Bevor du mit dem Mitschnitt beginnst, beachte bitte folgende Punkte:
 ### Schritt 1: Karoo vorbereiten
 1. Schalte dein **E-Bike zunächst AUS**.
 2. Entferne den Shimano-Sensor aus dem Karoo Sensormenü (falls noch vorhanden).
-3. **Starte den Karoo 3 neu** (Ein-/Ausschalttaste gedrückt halten -> *Neu starten*).
+3. **Starte den Karoo neu** (Ein-/Ausschalttaste gedrückt halten -> *Neu starten*).
 4. Warte, bis der Karoo vollständig hochgefahren ist.
 
 ### Schritt 2: Mit dem PC verbinden & ADB prüfen

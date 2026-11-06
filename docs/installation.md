@@ -1,6 +1,6 @@
 # 📦 Installationsanleitung (Schritt für Schritt)
 
-Diese Anleitung führt dich durch die erstmalige Einrichtung und das Sideloading von **Kteps** auf deinem **Hammerhead Karoo 3**.
+Diese Anleitung führt dich durch die erstmalige Einrichtung und das Sideloading von **Kteps** auf deinem **Hammerhead Karoo** (Karoo 2 & Karoo 3).
 
 ---
 
@@ -24,7 +24,7 @@ Da Kteps eine Drittanbieter-Erweiterung ist, muss auf dem Karoo einmalig das sog
 
 ## Schritt 2: Kteps APK auf den Karoo übertragen (Sideload)
 
-Lade dir die neueste `kteps.apk` (bzw. `karoo-ep8.apk`) von der [GitHub Release Seite](https://github.com/indigo-dev/kteps/releases) auf deinen PC herunter.
+Lade dir die neueste `kteps.apk` von der [GitHub Release Seite](https://github.com/indigo-dev/kteps/releases) auf deinen PC herunter.
 
 ### Option A: Installation per ADB (Empfohlen)
 
@@ -50,7 +50,7 @@ Falls du ein Android-Smartphone mit der Hammerhead Companion App nutzt, kannst d
 Android verlangt für Bluetooth Low Energy (BLE) Scans Berechtigungen für Bluetooth und Standort:
 
 1. Drücke die Taste für das **Hauptmenü / App-Drawer** auf deinem Karoo (Raster mit den installierten Apps).
-2. Suche die App **Kteps** (oder *Shimano EP8*) und tippe darauf, um sie einmalig zu öffnen.
+2. Suche die App **Kteps** und tippe darauf, um sie einmalig zu öffnen.
 3. Bestätige die angefragten Berechtigungen (**Bluetooth** und ggf. **Standort**), bis im Statusbildschirm alle Punkte grün markiert sind.
 4. Du kannst die App anschließend wieder verlassen – sie läuft ab sofort automatisch im Hintergrund als Karoo-Erweiterung.
 
@@ -77,7 +77,7 @@ Jetzt kannst du die neuen E-Bike-Datenfelder in dein gewünschtes Karoo-Fahrprof
 1. Gehe im Karoo auf **Profile** und wähle dein Fahrprofil aus.
 2. Wähle **Seiten bearbeiten** und tippe auf die Seite, die du anpassen möchtest.
 3. Tippe auf ein Datenfeld und wähle unter den Kategorien:
-   * **Kategorie „Kteps E-Bike“ (bzw. „Shimano EP8 E-Bike“):**
+   * **Kategorie „Kteps E-Bike“:**
      * **EP8 Modus:** Grafische Kachel mit farbigem Statuspunkt (`● OFF`, `ECO`, `TRAIL`, `BOOST`, `WALK`).
      * **EP8 Akku Balken:** Grafischer, dreifarbiger Ladebalken. In Feldern voller Bildschirmbreite wird zusätzlich eine Prozent-Plakette angezeigt.
      * **EP8 Reichweite:** Dynamische Restreichweite in km passend zum aktiven Fahrmodus.

@@ -5,14 +5,14 @@
 Moderne E-Bikes mit **Shimano STEPS / EP8 (DU-EP800 / EP801 / EP6)** Motoren sind häufig mit der kompakten Lenker-Verteilerbox **Shimano EW-EN100** ausgestattet. 
 
 * **Kein ANT+ LEV:** Während viele andere E-Bike-Systeme (z. B. Specialized, Giant, Bosch) den offenen ANT+ LEV (Light Electric Vehicle) Standard nutzen, sendet die EW-EN100 Fahrdaten (Unterstützungsmodus, Akkustand, Motor-Reichweite) **ausschließlich über ein proprietäres Shimano Bluetooth Low Energy (BLE) Protokoll**.
-* **Keine native Unterstützung auf dem Hammerhead Karoo 3:** Ohne zusätzliche Hardware-Bridges (wie drahtlose Display-Einheiten oder externe Übersetzer) kann der Karoo 3 das E-Bike nicht als E-Bike-Sensor erkennen oder dessen Akkustand und Unterstützungsstufen anzeigen.
-* **Karoo OS Bluetooth-Besonderheit:** Der Karoo 3 nutzt ein aggressives Energiemanagement über den systemeigenen Dienst `io.hammerhead.sensorservice` (`BluetoothCoordinator`). Sind auf dem Karoo keine nativen BLE-Sensoren (wie ein Bluetooth-Herzfrequenzgurt) gekoppelt, schaltet das System den Bluetooth-Funkchip automatisch ab, um Akku zu sparen.
+* **Keine native Unterstützung auf dem Hammerhead Karoo:** Ohne zusätzliche Hardware-Bridges (wie drahtlose Display-Einheiten oder externe Übersetzer) kann der Karoo das E-Bike nicht als E-Bike-Sensor erkennen oder dessen Akkustand und Unterstützungsstufen anzeigen.
+* **Karoo OS Bluetooth-Besonderheit:** Der Karoo nutzt ein aggressives Energiemanagement über den systemeigenen Dienst `io.hammerhead.sensorservice` (`BluetoothCoordinator`). Sind auf dem Karoo keine nativen BLE-Sensoren (wie ein Bluetooth-Herzfrequenzgurt) gekoppelt, schaltet das System den Bluetooth-Funkchip automatisch ab, um Akku zu sparen.
 
 ---
 
 ## 2. Zielsetzung
 
-Das Ziel von **Kteps** ist die vollständige, native und drahtlose Integration von Shimano EP8 / EW-EN100 Systemen auf dem **Hammerhead Karoo 3**:
+Das Ziel von **Kteps** ist die vollständige, native und drahtlose Integration von Shimano EP8 / EW-EN100 Systemen auf dem **Hammerhead Karoo**:
 
 1. **Direktes Pairing:** Erkennung und Kopplung des E-Bikes direkt über das Standard-Sensormenü des Karoo (*Sensoren -> `+` -> Suche*).
 2. **Grafische & Numerische E-Bike-Felder:** 
@@ -54,7 +54,7 @@ Kteps basiert auf dem offiziellen Hammerhead Extension SDK (**`karoo-ext`**) und
                             │ Bluetooth Low Energy (BLE)
 ┌───────────────────────────┴────────────────────────────┐
 │           Shimano EW-EN100 / EP8 Drive Unit            │
-└────────────────────────────────────────────────────────┘
+└───────────────────────────▲────────────────────────────┘
 ```
 
 ### A. Reverse-Engineering der Shimano BLE-Protokolle
