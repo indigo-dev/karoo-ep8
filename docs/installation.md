@@ -1,87 +1,87 @@
-# 📦 Installationsanleitung (Schritt für Schritt)
+# 📦 Installation Guide (Step by Step)
 
-Diese Anleitung führt dich durch die erstmalige Einrichtung und das Sideloading von **Kteps** auf deinem **Hammerhead Karoo** (Karoo 2 & Karoo 3).
-
----
-
-## Schritt 1: Sideloading & Entwickleroptionen auf dem Karoo aktivieren
-
-Da Kteps eine Drittanbieter-Erweiterung ist, muss auf dem Karoo einmalig das sogenannte **USB-Debugging** aktiviert werden:
-
-1. **Einstellungen öffnen:**
-   * Wische auf deinem Karoo vom oberen Bildschirmrand nach unten und tippe auf das **Zahnrad-Symbol** (Einstellungen).
-2. **Entwickleroptionen freischalten:**
-   * Scrolle ganz nach unten zu **Über das Gerät** (oder **Info**).
-   * Suche den Eintrag **Build-Nummer**.
-   * Tippe **7-mal schnell hintereinander** auf die **Build-Nummer**.
-   * Auf dem Bildschirm erscheint der Hinweis: *„Du bist jetzt ein Entwickler!“*.
-3. **USB-Debugging einschalten:**
-   * Gehe einen Schritt zurück in die Einstellungen und öffne das Menü **System** -> **Entwickleroptionen** (Developer options).
-   * Suche den Schalter **USB-Debugging** (Android Debug Bridge) und schalte ihn **EIN**.
-   * Bestätige den Sicherheitsdialog mit **OK**.
+This guide walks you through the initial setup and sideloading of **Kteps** on your **Hammerhead Karoo** (Karoo 2 & Karoo 3).
 
 ---
 
-## Schritt 2: Kteps APK auf den Karoo übertragen (Sideload)
+## Step 1: Enable Sideloading & Developer Options on the Karoo
 
-Lade dir die neueste `kteps.apk` von der [GitHub Release Seite](https://github.com/indigo-dev/kteps/releases) auf deinen PC herunter.
+Because Kteps is a third-party extension, **USB Debugging** must be enabled once on your Karoo device:
 
-### Option A: Installation per ADB (Empfohlen)
+1. **Open Settings:**
+   * Swipe down from the top of the Karoo screen and tap the **Gear icon** (Settings).
+2. **Unlock Developer Options:**
+   * Scroll down to **About** (or **Device Info**).
+   * Locate the **Build Number** entry.
+   * Tap the **Build Number 7 times quickly**.
+   * A toast notification will appear: *“You are now a developer!”*.
+3. **Turn on USB Debugging:**
+   * Return to the main Settings menu and navigate to **System** -> **Developer options**.
+   * Find the **USB debugging** toggle (Android Debug Bridge) and switch it **ON**.
+   * Confirm the security prompt by tapping **OK**.
 
-1. Verbinde deinen Karoo per **USB-C Kabel** mit deinem PC oder Mac.
-2. Wenn auf dem Karoo-Bildschirm die Abfrage *„USB-Debugging zulassen?“* erscheint:
-   * Setze einen Haken bei *„Von diesem Computer immer zulassen“* und tippe auf **Zulassen**.
-3. Öffne auf deinem Computer ein Terminal (Eingabeaufforderung oder PowerShell):
+---
+
+## Step 2: Sideload Kteps APK onto the Karoo
+
+Download the latest `kteps.apk` from the [GitHub Releases page](https://github.com/indigo-dev/kteps/releases) to your computer.
+
+### Option A: Installation via ADB (Recommended)
+
+1. Connect your Karoo to your computer using a **USB-C cable**.
+2. If prompted on the Karoo display with *“Allow USB debugging?”*:
+   * Check *“Always allow from this computer”* and tap **Allow**.
+3. Open a terminal (Command Prompt or PowerShell on Windows, Terminal on macOS/Linux):
    ```bash
    adb install -r kteps.apk
    ```
-4. Nach wenigen Sekunden erscheint die Meldung **`Success`**.
+4. After a few seconds, the message **`Success`** will appear.
 
-*(Hinweis: Falls du noch kein ADB auf deinem PC installiert hast, kannst du die [Google Platform-Tools](https://developer.android.com/tools/releases/platform-tools) herunterladen oder ein browserbasiertes Sideloading-Tool wie WebADB nutzen).*
+*(Note: If ADB is not yet installed on your computer, you can download the official [Google Platform-Tools](https://developer.android.com/tools/releases/platform-tools) or use a browser-based sideloading utility such as WebADB).*
 
-### Option B: Installation über die Hammerhead Companion App
+### Option B: Installation via Hammerhead Companion App
 
-Falls du ein Android-Smartphone mit der Hammerhead Companion App nutzt, kannst du heruntergeladene APK-Dateien teilweise auch direkt über die App an den Karoo senden (sofern dein Karoo mit dem Smartphone gekoppelt ist).
-
----
-
-## Schritt 3: Berechtigungen einmalig erteilen
-
-Android verlangt für Bluetooth Low Energy (BLE) Scans Berechtigungen für Bluetooth und Standort:
-
-1. Drücke die Taste für das **Hauptmenü / App-Drawer** auf deinem Karoo (Raster mit den installierten Apps).
-2. Suche die App **Kteps** und tippe darauf, um sie einmalig zu öffnen.
-3. Bestätige die angefragten Berechtigungen (**Bluetooth** und ggf. **Standort**), bis im Statusbildschirm alle Punkte grün markiert sind.
-4. Du kannst die App anschließend wieder verlassen – sie läuft ab sofort automatisch im Hintergrund als Karoo-Erweiterung.
+If you use an Android smartphone paired with the Hammerhead Companion App, you can also sideload downloaded APK files directly to the Karoo via the companion app's file sharing features.
 
 ---
 
-## Schritt 4: E-Bike als Sensor koppeln
+## Step 3: Grant Permissions Once
 
-1. **E-Bike einschalten:**
-   * Schalte dein Shimano E-Bike am Haupttaster ein. Die LED an der EW-EN100 blinkt kurz blau auf und signalisiert Bluetooth-Empfangsbereitschaft.
-2. **Sensorsuche am Karoo starten:**
-   * Gehe auf dem Karoo in das Menü **Sensoren**.
-   * Tippe auf das **`+` (Hinzufügen)** Symbol und wähle **Suche**.
-3. **Sensor auswählen:**
-   * Nach wenigen Sekunden erscheint dein Bike in der Liste (z. B. als `EWEN100 0AB` oder `Shimano STEPS`).
-   * Tippe auf das Bike und wähle **Sensor hinzufügen** (oder bestätige mit dem Haken).
-4. Der Sensor erscheint nun in deiner Sensor-Liste mit einem Erweiterungssymbol (Puzzleteil) und verbindet sich automatisch.
+Android requires explicit user permissions for Bluetooth scanning:
+
+1. Press the **App Drawer button** on your Karoo (grid showing installed applications).
+2. Locate the **Kteps** app and tap to open it once.
+3. Grant the requested **Bluetooth** (and Location if prompted) permissions until all status indicators show green checkmarks.
+4. You can now exit the app — it runs automatically in the background as an extension service whenever the Karoo is on.
 
 ---
 
-## Schritt 5: Datenfelder zum Fahrprofil hinzufügen
+## Step 4: Pair Your E-Bike as a Sensor
 
-Jetzt kannst du die neuen E-Bike-Datenfelder in dein gewünschtes Karoo-Fahrprofil einbinden:
+1. **Turn On E-Bike:**
+   * Power on your Shimano e-bike using the main power button. The LED on the EW-EN100 will flash blue, indicating it is advertising over Bluetooth LE.
+2. **Start Sensor Search on Karoo:**
+   * Navigate to the Karoo **Sensors** menu.
+   * Tap the **`+` (Add)** button and select **Search**.
+3. **Select Your Bike:**
+   * Within a few seconds, your bike will appear in the search results (e.g., `EWEN100 0AB` or `Shimano STEPS`).
+   * Tap on your bike and select **Add Sensor** (or confirm with the checkmark).
+4. The bike will now appear in your sensor list with an extension puzzle piece icon and connect automatically.
 
-1. Gehe im Karoo auf **Profile** und wähle dein Fahrprofil aus.
-2. Wähle **Seiten bearbeiten** und tippe auf die Seite, die du anpassen möchtest.
-3. Tippe auf ein Datenfeld und wähle unter den Kategorien:
-   * **Kategorie „Kteps E-Bike“:**
-     * **EP8 Modus:** Grafische Kachel mit farbigem Statuspunkt (`● OFF`, `ECO`, `TRAIL`, `BOOST`, `WALK`).
-     * **EP8 Akku Balken:** Grafischer, dreifarbiger Ladebalken. In Feldern voller Bildschirmbreite wird zusätzlich eine Prozent-Plakette angezeigt.
-     * **EP8 Reichweite:** Dynamische Restreichweite in km passend zum aktiven Fahrmodus.
-     * **EP8 Akku:** Große numerische Prozentanzeige (`0–100 %`).
-     * **EP8 Trip-km / Gesamt-km:** Tageskilometer der aktuellen Fahrt und Gesamtkilometerstand des Motors.
-   * **Native Standardfelder des Karoo:**
-     * Du kannst auch ganz normale Standard-Datenfelder für **Geschwindigkeit**, **Trittfrequenz**, **Leistung (Watt)** und **Sensor-Batterie** belegen – Kteps füttert diese automatisch mit den Motordaten.
+---
+
+## Step 5: Add Data Fields to Your Ride Profile
+
+You can now add the new e-bike data fields to your preferred ride profiles:
+
+1. Navigate to **Profiles** on your Karoo and select your profile.
+2. Tap **Edit Pages** and select the page you wish to customize.
+3. Tap a data field slot and browse the available categories:
+   * **Category “Kteps E-Bike”:**
+     * **EP8 Mode:** Graphical tile with colored status dot (`● OFF`, `ECO`, `TRAIL`, `BOOST`, `WALK`).
+     * **EP8 Battery Bar:** Graphical tri-color battery indicator bar. In full-width fields, a percentage badge is rendered automatically.
+     * **EP8 Range:** Dynamic remaining range in km matching the currently active assist mode.
+     * **EP8 Battery:** Large numeric battery percentage display (`0–100 %`).
+     * **EP8 Trip / Total Odo:** Current session trip distance and lifetime motor odometer.
+   * **Native Karoo Sensor Fields:**
+     * You can also use native Karoo fields for **Speed**, **Cadence**, **Power (Watts)**, and **Sensor Battery** — Kteps feeds them automatically from the drive unit telemetry.

@@ -122,14 +122,14 @@ Communication uses Bluetooth Low Energy (GATT) via the standard Battery Service 
 
 ---
 
-## 📚 Dokumentation & Wiki
+## 📚 Documentation & Wiki
 
-Ausführliche Anleitungen und technische Hintergrundinformationen:
+Comprehensive guides, architecture overviews, and technical specifications:
 
-* 📖 **[Projektdokumentation](docs/projektdokumentation.md):** Ausgangslage, Ziele und technische BLE-Architektur.
-* 📡 **[BLE-Protokoll & Byte-Spezifikation](docs/ble-protokoll.md):** Detaillierte GATT-Architektur und Byte-Belegung der Telemetrie-Pakete (Paket 0x02, 0x03, 0x01).
-* 📦 **[Installationsanleitung (Schritt für Schritt)](docs/installation.md):** Sideloading & Entwickleroptionen auf dem Karoo aktivieren, APK installieren und Sensor einrichten.
-* 🛠️ **[Fehleranalyse & Logcat-Anleitung](docs/logcat-anleitung.md):** So zeichnest du ein Logcat-Protokoll zur Fehlersuche auf.
+* 📖 **[Project Documentation](docs/project-documentation.md):** Background, design goals, and three-tier BLE architecture.
+* 📡 **[BLE Protocol & Byte Specification](docs/ble-protocol.md):** Detailed GATT architecture and byte-by-byte telemetry packet mapping (packets `0x02`, `0x03`, `0x01`).
+* 📦 **[Installation Guide (Step by Step)](docs/installation.md):** Sideloading, enabling developer options, APK installation, and sensor pairing.
+* 🛠️ **[Troubleshooting & Logcat Guide](docs/logcat-guide.md):** Step-by-step instructions for recording an Android Logcat for diagnostics.
 
 ---
 
